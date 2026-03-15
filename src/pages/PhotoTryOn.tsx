@@ -1,192 +1,132 @@
 import { useState, useRef, useCallback } from "react";
 import { Navbar } from "@/components/landing/Navbar";
 import { Button } from "@/components/ui/button";
-import { Upload, ImagePlus, Loader2, Scan, User, Shirt } from "lucide-react";
+import { Upload, ImagePlus, Loader2, Scan, Shirt, Sparkles, AlertCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-interface BodyPoint {
-  x: number;
-  y: number;
-  label: string;
-}
+import blackTshirt from "@/assets/garments/black-tshirt.png";
+import whiteTshirt from "@/assets/garments/white-tshirt.png";
+import denimJacket from "@/assets/garments/denim-jacket.png";
+import redDress from "@/assets/garments/red-dress.png";
+
+const garments = [
+  {
+    id: 0,
+    name: "Camiseta Preta",
+    description: "A plain black crew neck cotton t-shirt, casual fit, short sleeves",
+    image: blackTshirt,
+  },
+  {
+    id: 1,
+    name: "Camiseta Branca",
+    description: "A plain white crew neck cotton t-shirt, casual fit, short sleeves",
+    image: whiteTshirt,
+  },
+  {
+    id: 2,
+    name: "Jaqueta Jeans",
+    description: "A classic blue denim jacket with metal buttons, collar, and front pockets",
+    image: denimJacket,
+  },
+  {
+    id: 3,
+    name: "Vestido Vermelho",
+    description: "An elegant red midi cocktail dress with spaghetti straps and flowing fabric",
+    image: redDress,
+  },
+];
 
 export default function PhotoTryOn() {
   const [userImage, setUserImage] = useState<string | null>(null);
+  const [resultImage, setResultImage] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
-  const [bodyMap, setBodyMap] = useState<BodyPoint[]>([]);
+  const [processingStep, setProcessingStep] = useState("");
   const [selectedGarment, setSelectedGarment] = useState<number | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const garments = [
-    { id: 0, name: "Camiseta Preta", type: "tops", color: "#1a1a2e" },
-    { id: 1, name: "Camiseta Branca", type: "tops", color: "#e2e8f0" },
-    { id: 2, name: "Jaqueta Jeans", type: "tops", color: "#3b82f6" },
-    { id: 3, name: "Vestido Vermelho", type: "dress", color: "#ef4444" },
-  ];
+  const { toast } = useToast();
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file size (max 4MB for base64 payload)
+    if (file.size > 4 * 1024 * 1024) {
+      toast({
+        title: "Arquivo muito grande",
+        description: "Envie uma imagem de até 4MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (ev) => {
       setUserImage(ev.target?.result as string);
-      setBodyMap([]);
+      setResultImage(null);
       setSelectedGarment(null);
-      detectBody(ev.target?.result as string);
+      setError(null);
     };
     reader.readAsDataURL(file);
-  }, []);
+  }, [toast]);
 
-  const detectBody = async (imageSrc: string) => {
-    setProcessing(true);
+  const applyGarment = async (garmentId: number) => {
+    if (!userImage) return;
 
-    // Simulate body detection with realistic points
-    // In production, this calls MediaPipe Pose or a server-side model
-    await new Promise((r) => setTimeout(r, 1500));
-
-    const img = new Image();
-    img.onload = () => {
-      const w = img.width;
-      const h = img.height;
-
-      // Simulated body landmark detection
-      const points: BodyPoint[] = [
-        { x: 0.5 * w, y: 0.12 * h, label: "Cabeça" },
-        { x: 0.5 * w, y: 0.2 * h, label: "Pescoço" },
-        { x: 0.38 * w, y: 0.28 * h, label: "Ombro E" },
-        { x: 0.62 * w, y: 0.28 * h, label: "Ombro D" },
-        { x: 0.3 * w, y: 0.42 * h, label: "Cotovelo E" },
-        { x: 0.7 * w, y: 0.42 * h, label: "Cotovelo D" },
-        { x: 0.5 * w, y: 0.38 * h, label: "Peito" },
-        { x: 0.5 * w, y: 0.5 * h, label: "Cintura" },
-        { x: 0.42 * w, y: 0.55 * h, label: "Quadril E" },
-        { x: 0.58 * w, y: 0.55 * h, label: "Quadril D" },
-        { x: 0.4 * w, y: 0.72 * h, label: "Joelho E" },
-        { x: 0.6 * w, y: 0.72 * h, label: "Joelho D" },
-        { x: 0.4 * w, y: 0.92 * h, label: "Tornozelo E" },
-        { x: 0.6 * w, y: 0.92 * h, label: "Tornozelo D" },
-      ];
-
-      setBodyMap(points);
-      drawOverlay(img, points);
-      setProcessing(false);
-    };
-    img.src = imageSrc;
-  };
-
-  const drawOverlay = (img: HTMLImageElement, points: BodyPoint[]) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    // Scale canvas to fit
-    const maxW = 600;
-    const scale = maxW / img.width;
-    canvas.width = img.width * scale;
-    canvas.height = img.height * scale;
-
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-    // Draw skeleton
-    const connections = [
-      [2, 3], [2, 4], [3, 5], [2, 6], [3, 6],
-      [6, 7], [7, 8], [7, 9],
-      [8, 10], [9, 11], [10, 12], [11, 13],
-    ];
-
-    ctx.strokeStyle = "hsl(217.2, 91.2%, 59.8%)";
-    ctx.lineWidth = 2;
-    ctx.globalAlpha = 0.6;
-
-    connections.forEach(([a, b]) => {
-      const pa = points[a];
-      const pb = points[b];
-      if (pa && pb) {
-        ctx.beginPath();
-        ctx.moveTo(pa.x * scale, pa.y * scale);
-        ctx.lineTo(pb.x * scale, pb.y * scale);
-        ctx.stroke();
-      }
-    });
-
-    // Draw points
-    ctx.globalAlpha = 1;
-    points.forEach((p) => {
-      ctx.beginPath();
-      ctx.arc(p.x * scale, p.y * scale, 5, 0, Math.PI * 2);
-      ctx.fillStyle = "hsl(217.2, 91.2%, 59.8%)";
-      ctx.fill();
-      ctx.strokeStyle = "hsl(0, 0%, 100%)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    });
-  };
-
-  const applyGarment = (garmentId: number) => {
     setSelectedGarment(garmentId);
+    setProcessing(true);
+    setError(null);
+    setResultImage(null);
     const garment = garments[garmentId];
-    if (!canvasRef.current || bodyMap.length === 0) return;
 
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    try {
+      setProcessingStep("Analisando corpo e pose...");
+      await new Promise((r) => setTimeout(r, 500));
 
-    // Reload original image then overlay garment
-    const img = new Image();
-    img.onload = () => {
-      const scale = canvas.width / img.width;
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      setProcessingStep("Aplicando roupa com IA...");
 
-      // Draw garment area (simplified - in production uses TPS warping)
-      const shoulderL = bodyMap[2];
-      const shoulderR = bodyMap[3];
-      const waist = bodyMap[7];
-      const hipL = bodyMap[8];
-      const hipR = bodyMap[9];
-
-      if (!shoulderL || !shoulderR || !waist) return;
-
-      ctx.globalAlpha = 0.7;
-      ctx.fillStyle = garment.color;
-      ctx.beginPath();
-
-      const endPoints = garment.type === "dress" ? [hipL, hipR] : [waist, waist];
-      const bottomY = garment.type === "dress" ? (hipL!.y + 80) : waist.y + 30;
-
-      // Garment shape
-      ctx.moveTo((shoulderL.x - 15) * scale, shoulderL.y * scale);
-      ctx.lineTo((shoulderR.x + 15) * scale, shoulderR.y * scale);
-      ctx.lineTo((shoulderR.x + 10) * scale, bottomY * scale);
-      ctx.lineTo((shoulderL.x - 10) * scale, bottomY * scale);
-      ctx.closePath();
-      ctx.fill();
-
-      // Collar
-      ctx.globalAlpha = 0.3;
-      ctx.beginPath();
-      const neckX = bodyMap[1]!.x * scale;
-      const neckY = bodyMap[1]!.y * scale;
-      ctx.arc(neckX, neckY + 10, 18, 0, Math.PI * 2);
-      ctx.fillStyle = "hsl(var(--background))";
-      ctx.fill();
-
-      ctx.globalAlpha = 1;
-
-      // Re-draw skeleton points on top
-      ctx.globalAlpha = 0.4;
-      bodyMap.forEach((p) => {
-        ctx.beginPath();
-        ctx.arc(p.x * scale, p.y * scale, 4, 0, Math.PI * 2);
-        ctx.fillStyle = "hsl(217.2, 91.2%, 59.8%)";
-        ctx.fill();
+      const { data, error: fnError } = await supabase.functions.invoke("virtual-tryon", {
+        body: {
+          userImageBase64: userImage,
+          garmentName: garment.name,
+          garmentDescription: garment.description,
+        },
       });
-      ctx.globalAlpha = 1;
-    };
-    img.src = userImage!;
+
+      if (fnError) {
+        throw new Error(fnError.message || "Erro ao processar");
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      if (data?.image) {
+        setResultImage(data.image);
+        setProcessingStep("");
+        toast({
+          title: "Prova virtual concluída!",
+          description: `${garment.name} aplicada com sucesso.`,
+        });
+      } else {
+        throw new Error("A IA não gerou uma imagem. Tente novamente.");
+      }
+    } catch (err: any) {
+      console.error("Try-on error:", err);
+      const msg = err?.message || "Erro desconhecido";
+      setError(msg);
+      toast({
+        title: "Erro no provador",
+        description: msg,
+        variant: "destructive",
+      });
+    } finally {
+      setProcessing(false);
+    }
   };
+
+  const displayImage = resultImage || userImage;
 
   return (
     <div className="min-h-screen bg-background">
@@ -197,7 +137,7 @@ export default function PhotoTryOn() {
             Provador por <span className="text-gradient">Foto</span>
           </h1>
           <p className="text-muted-foreground mb-6">
-            Envie uma foto e o sistema detecta automaticamente seu corpo
+            Envie uma foto e a IA aplica a roupa de forma realista
           </p>
 
           <div className="grid lg:grid-cols-[1fr_320px] gap-6">
@@ -225,16 +165,33 @@ export default function PhotoTryOn() {
                 </div>
               )}
 
-              {userImage && (
-                <canvas ref={canvasRef} className="max-w-full max-h-[600px] object-contain" />
+              {displayImage && (
+                <img
+                  src={displayImage}
+                  alt="Try-on result"
+                  className="max-w-full max-h-[600px] object-contain"
+                />
+              )}
+
+              {/* Result badge */}
+              {resultImage && (
+                <div className="absolute top-4 left-4 flex items-center gap-2">
+                  <span className="text-xs font-mono glass px-3 py-1.5 rounded-full flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3 text-primary" />
+                    GERADO POR IA
+                  </span>
+                </div>
               )}
 
               {processing && (
-                <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center gap-3">
-                  <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                  <div className="text-sm font-mono text-primary">DETECTANDO CORPO...</div>
+                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
+                  <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                  <div className="text-sm font-mono text-primary">{processingStep}</div>
+                  <p className="text-xs text-muted-foreground max-w-xs text-center">
+                    A IA está analisando sua foto e aplicando a roupa. Isso pode levar alguns segundos.
+                  </p>
                   <div className="w-48 h-1 rounded-full bg-secondary overflow-hidden">
-                    <div className="h-full bg-primary rounded-full animate-pulse" style={{ width: "70%" }} />
+                    <div className="h-full bg-primary rounded-full animate-pulse" style={{ width: "60%" }} />
                   </div>
                 </div>
               )}
@@ -243,38 +200,30 @@ export default function PhotoTryOn() {
             {/* Side panel */}
             <div className="space-y-6">
               {userImage && (
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="w-4 h-4" />
-                  Trocar Foto
-                </Button>
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageUpload}
+                  />
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="w-4 h-4" />
+                    Trocar Foto
+                  </Button>
+                </>
               )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageUpload}
-              />
 
-              {/* Body map info */}
-              {bodyMap.length > 0 && (
-                <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
-                  <h4 className="text-xs font-mono text-primary mb-3 flex items-center gap-2">
-                    <Scan className="w-3 h-3" />
-                    MAPA CORPORAL
-                  </h4>
-                  <div className="grid grid-cols-2 gap-1.5 text-xs">
-                    {bodyMap.map((p) => (
-                      <div key={p.label} className="flex items-center gap-1.5 text-muted-foreground">
-                        <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                        {p.label}
-                      </div>
-                    ))}
-                  </div>
+              {/* Error */}
+              {error && (
+                <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3">
+                  <AlertCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+                  <p className="text-xs text-destructive">{error}</p>
                 </div>
               )}
 
@@ -282,47 +231,58 @@ export default function PhotoTryOn() {
               <div className="rounded-2xl border border-border bg-card p-5">
                 <h3 className="font-bold mb-4 flex items-center gap-2">
                   <Shirt className="w-4 h-4 text-primary" />
-                  Roupas
+                  Selecione uma roupa
                 </h3>
-                <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-3">
                   {garments.map((g) => (
                     <button
                       key={g.id}
                       onClick={() => applyGarment(g.id)}
-                      disabled={bodyMap.length === 0}
-                      className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all flex items-center gap-3 disabled:opacity-30 ${
+                      disabled={!userImage || processing}
+                      className={`rounded-xl border text-center p-3 transition-all disabled:opacity-30 ${
                         selectedGarment === g.id
-                          ? "bg-primary/10 text-primary border border-primary/20"
-                          : "hover:bg-secondary text-muted-foreground"
+                          ? "border-primary/50 bg-primary/5"
+                          : "border-border hover:border-primary/20 hover:bg-secondary/50"
                       }`}
                     >
-                      <div
-                        className="w-6 h-6 rounded-lg border border-border"
-                        style={{ backgroundColor: g.color }}
+                      <img
+                        src={g.image}
+                        alt={g.name}
+                        className="w-full aspect-square object-contain mb-2 rounded-lg"
                       />
-                      {g.name}
+                      <span className="text-xs font-medium">{g.name}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Pipeline info */}
+              {/* Pipeline */}
               <div className="rounded-2xl border border-border bg-card p-5">
-                <h4 className="text-xs font-mono text-muted-foreground mb-3">PIPELINE</h4>
-                <div className="space-y-2 text-xs text-muted-foreground">
+                <h4 className="text-xs font-mono text-muted-foreground mb-3">PIPELINE IA</h4>
+                <div className="space-y-2.5 text-xs text-muted-foreground">
                   {[
-                    { step: "1. Detecção", icon: User, done: bodyMap.length > 0 },
-                    { step: "2. Mapa Corporal", icon: Scan, done: bodyMap.length > 0 },
-                    { step: "3. Aplicar Roupa", icon: Shirt, done: selectedGarment !== null },
+                    { step: "1. Upload da foto", done: !!userImage },
+                    { step: "2. Selecionar roupa", done: selectedGarment !== null },
+                    { step: "3. Análise de corpo e pose", done: !!resultImage },
+                    { step: "4. Deformação e iluminação", done: !!resultImage },
+                    { step: "5. Renderização final", done: !!resultImage },
                   ].map((s) => (
                     <div key={s.step} className="flex items-center gap-2">
-                      <div className={`w-4 h-4 rounded-full flex items-center justify-center ${s.done ? "bg-success/20" : "bg-secondary"}`}>
-                        <s.icon className={`w-2.5 h-2.5 ${s.done ? "text-success" : "text-muted-foreground"}`} />
-                      </div>
+                      <div className={`w-2 h-2 rounded-full ${s.done ? "bg-success" : "bg-muted"}`} />
                       <span className={s.done ? "text-foreground" : ""}>{s.step}</span>
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Info */}
+              <div className="rounded-2xl border border-primary/10 bg-primary/5 p-4">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  <Sparkles className="w-3 h-3 text-primary inline mr-1" />
+                  Usando <strong className="text-foreground">Gemini AI</strong> para análise de corpo, 
+                  deformação de roupa e ajuste de iluminação. Suas fotos são processadas em memória 
+                  e nunca armazenadas.
+                </p>
               </div>
             </div>
           </div>
