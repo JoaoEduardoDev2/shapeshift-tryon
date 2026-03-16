@@ -355,8 +355,8 @@ export default function Mirror() {
     const lensH = lensW * 0.7;
 
     ctx.globalAlpha = 0.75;
-    ctx.fillStyle = selectedColor === "#d4a017" ? "rgba(80, 60, 20, 0.5)" : "rgba(0,0,0,0.7)";
-    ctx.strokeStyle = selectedColor;
+    ctx.fillStyle = color === "#d4a017" ? "rgba(80, 60, 20, 0.5)" : "rgba(0,0,0,0.7)";
+    ctx.strokeStyle = color;
     ctx.lineWidth = Math.max(2, w * 0.004);
 
     // Left lens
