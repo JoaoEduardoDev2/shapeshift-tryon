@@ -343,7 +343,7 @@ export default function Mirror() {
     ctx.globalAlpha = 1;
   };
 
-  const drawSunglasses = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number) => {
+  const drawSunglasses = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number, color: string) => {
     const bridge = { x: lm[NOSE_BRIDGE].x * w, y: lm[NOSE_BRIDGE].y * h };
     const leftEye = { x: lm[LEFT_EYE_OUTER].x * w, y: lm[LEFT_EYE_OUTER].y * h };
     const rightEye = { x: lm[RIGHT_EYE_OUTER].x * w, y: lm[RIGHT_EYE_OUTER].y * h };
