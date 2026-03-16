@@ -330,9 +330,9 @@ export default function Mirror() {
     ctx.globalAlpha = 1;
   };
 
-  const drawFoundation = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number) => {
+  const drawFoundation = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number, color: string) => {
     ctx.globalAlpha = 0.15;
-    ctx.fillStyle = selectedColor;
+    ctx.fillStyle = color;
     ctx.beginPath();
     FACE_OUTLINE.forEach((idx, i) => {
       const x = lm[idx].x * w, y = lm[idx].y * h;
