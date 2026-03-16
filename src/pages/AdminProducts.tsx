@@ -51,6 +51,7 @@ export default function AdminProducts() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { canAddProduct, remainingProducts, limits } = usePlanLimits();
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [search, setSearch] = useState("");
