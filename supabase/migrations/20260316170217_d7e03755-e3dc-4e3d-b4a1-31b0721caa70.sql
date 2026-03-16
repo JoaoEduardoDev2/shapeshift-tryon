@@ -1,0 +1,1 @@
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS intensity integer NOT NULL DEFAULT 80;
