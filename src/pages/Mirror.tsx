@@ -278,7 +278,7 @@ export default function Mirror() {
     ctx.globalAlpha = 1;
   };
 
-  const drawBlush = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number) => {
+  const drawBlush = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number, color: string) => {
     const radius = w * 0.04;
     ctx.globalAlpha = 0.25;
     [LEFT_CHEEK_CENTER, RIGHT_CHEEK_CENTER].forEach((idx) => {
