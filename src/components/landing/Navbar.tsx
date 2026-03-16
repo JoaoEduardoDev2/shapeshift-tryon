@@ -21,13 +21,14 @@ export function Navbar() {
         <div className="hidden sm:flex items-center gap-6 text-sm text-muted-foreground">
           {isHome && (
             <>
-              <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-              <a href="#integration" className="hover:text-foreground transition-colors">Integração</a>
+              <a href="#how-it-works" className="hover:text-foreground transition-colors">Como Funciona</a>
+              <a href="#examples" className="hover:text-foreground transition-colors">Exemplos</a>
+              <a href="#pricing" className="hover:text-foreground transition-colors">Planos</a>
+              <a href="#faq" className="hover:text-foreground transition-colors">FAQ</a>
             </>
           )}
           <Link to="/mirror" className="hover:text-foreground transition-colors">Espelho</Link>
           <Link to="/photo" className="hover:text-foreground transition-colors">Foto</Link>
-          {isHome && <a href="#pricing" className="hover:text-foreground transition-colors">Planos</a>}
           <Link to="/admin" className="hover:text-foreground transition-colors">Admin</Link>
         </div>
 
