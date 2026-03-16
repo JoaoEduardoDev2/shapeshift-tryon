@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Upload, ImagePlus, Loader2, Scan, Shirt, Sparkles, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { SharePanel } from "@/components/SharePanel";
 
 import blackTshirt from "@/assets/garments/black-tshirt.png";
 import whiteTshirt from "@/assets/garments/white-tshirt.png";
@@ -264,6 +265,15 @@ export default function PhotoTryOn() {
                   ))}
                 </div>
               </div>
+
+              {resultImage && selectedGarment !== null && (
+                <SharePanel
+                  imageBase64={resultImage}
+                  garmentName={garments.find(g => g.id === selectedGarment)?.name || ""}
+                  garmentDescription={garments.find(g => g.id === selectedGarment)?.description}
+                  mode="photo"
+                />
+              )}
 
               <div className="rounded-2xl border border-primary/10 bg-primary/5 p-4">
                 <p className="text-xs text-muted-foreground leading-relaxed">
