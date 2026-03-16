@@ -8,6 +8,10 @@ import Landing from "./pages/Landing";
 import Mirror from "./pages/Mirror";
 import PhotoTryOn from "./pages/PhotoTryOn";
 import Admin from "./pages/Admin";
+import AdminProducts from "./pages/AdminProducts";
+import AdminAnalytics from "./pages/AdminAnalytics";
+import AdminIntegrations from "./pages/AdminIntegrations";
+import AdminSettings from "./pages/AdminSettings";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import LookPage from "./pages/LookPage";
@@ -27,6 +31,10 @@ const App = () => (
             <Route path="/mirror" element={<Mirror />} />
             <Route path="/photo" element={<PhotoTryOn />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/admin/products" element={<AdminProducts />} />
+            <Route path="/admin/analytics" element={<AdminAnalytics />} />
+            <Route path="/admin/integrations" element={<AdminIntegrations />} />
+            <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/look/:id" element={<LookPage />} />
