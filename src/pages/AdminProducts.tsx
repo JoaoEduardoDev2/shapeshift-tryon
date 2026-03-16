@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ProductFormDialog } from "@/components/admin/ProductFormDialog";
 import { ProductCard } from "@/components/admin/ProductCard";
 import { EditProductDialog } from "@/components/admin/EditProductDialog";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
 
 interface Product {
   id: string;
