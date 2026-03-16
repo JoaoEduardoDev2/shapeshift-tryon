@@ -1,9 +1,10 @@
 import { useRef, useEffect, useState, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/landing/Navbar";
 import { Button } from "@/components/ui/button";
-import { Camera, CameraOff, FlipHorizontal, Palette, Glasses, Sparkles, Eye, Brush, Crown } from "lucide-react";
+import { Camera, CameraOff, FlipHorizontal, Palette, Glasses, Sparkles, Eye, Brush, Crown, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
 
 type ProductCategory = "beauty" | "accessories";
 
@@ -182,6 +183,8 @@ type DetectionMode = "loading" | "mediapipe" | "facedetector" | "manual";
 
 export default function Mirror() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { limits, loading: planLoading } = usePlanLimits();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [cameraOn, setCameraOn] = useState(false);
@@ -582,6 +585,24 @@ export default function Mirror() {
     facedetector: "FACE DETECTOR API",
     manual: "MODO ESTIMADO",
   };
+
+  if (!planLoading && !limits.hasMirror) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="pt-20 flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-6">
+            <Lock className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h1 className="text-2xl font-black mb-2">Espelho Virtual</h1>
+          <p className="text-muted-foreground max-w-md mb-6">
+            O espelho virtual com câmera ao vivo está disponível a partir do plano <strong>Growth</strong>.
+          </p>
+          <Button onClick={() => navigate("/paywall")}>Fazer Upgrade</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

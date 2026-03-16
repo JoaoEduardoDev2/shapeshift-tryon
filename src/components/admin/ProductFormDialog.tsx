@@ -53,9 +53,11 @@ const defaultTryonMode = (category: string): string => {
 interface ProductFormDialogProps {
   userId: string;
   onSaved: () => void;
+  canAddProduct?: boolean;
+  remainingProducts?: number;
 }
 
-export function ProductFormDialog({ userId, onSaved }: ProductFormDialogProps) {
+export function ProductFormDialog({ userId, onSaved, canAddProduct = true, remainingProducts }: ProductFormDialogProps) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -167,7 +169,10 @@ export function ProductFormDialog({ userId, onSaved }: ProductFormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button><Plus className="w-4 h-4" /> Novo Produto</Button>
+        <Button disabled={!canAddProduct}>
+          <Plus className="w-4 h-4" /> Novo Produto
+          {!canAddProduct && " (limite atingido)"}
+        </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>

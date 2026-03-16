@@ -1,10 +1,12 @@
 import { useState, useRef, useCallback } from "react";
 import { Navbar } from "@/components/landing/Navbar";
 import { Button } from "@/components/ui/button";
-import { Upload, ImagePlus, Loader2, Scan, Shirt, Sparkles, AlertCircle } from "lucide-react";
+import { Upload, ImagePlus, Loader2, Scan, Shirt, Sparkles, AlertCircle, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { SharePanel } from "@/components/SharePanel";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
+import { useAuth } from "@/hooks/useAuth";
 
 import blackTshirt from "@/assets/garments/black-tshirt.png";
 import whiteTshirt from "@/assets/garments/white-tshirt.png";
@@ -77,6 +79,8 @@ export default function PhotoTryOn() {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { canDoTryon, remainingTryons, limits, plan } = usePlanLimits();
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -97,6 +101,10 @@ export default function PhotoTryOn() {
 
   const applyGarment = async (garmentId: number) => {
     if (!userImage) return;
+    if (user && !canDoTryon) {
+      toast({ title: "Limite de provas atingido", description: `Seu plano permite ${limits.maxTryonsPerMonth.toLocaleString()} provas/mês. Faça upgrade para continuar.`, variant: "destructive" });
+      return;
+    }
     setSelectedGarment(garmentId);
     setProcessing(true);
     setError(null);
@@ -118,6 +126,14 @@ export default function PhotoTryOn() {
         setResultImage(data.image);
         setProcessingStep("");
         toast({ title: "Prova virtual concluída!", description: `${garment.name} aplicada com sucesso.` });
+        // Track tryon event
+        if (user) {
+          await supabase.from("analytics_events").insert({
+            user_id: user.id,
+            event_type: "tryon",
+            metadata: { garment_name: garment.name, mode: "photo" },
+          });
+        }
       } else {
         throw new Error("A IA não gerou uma imagem. Tente novamente.");
       }
