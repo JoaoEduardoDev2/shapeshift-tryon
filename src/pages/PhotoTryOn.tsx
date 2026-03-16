@@ -266,6 +266,15 @@ export default function PhotoTryOn() {
                 </div>
               </div>
 
+              {resultImage && selectedGarment !== null && (
+                <SharePanel
+                  imageBase64={resultImage}
+                  garmentName={garments.find(g => g.id === selectedGarment)?.name || ""}
+                  garmentDescription={garments.find(g => g.id === selectedGarment)?.description}
+                  mode="photo"
+                />
+              )}
+
               <div className="rounded-2xl border border-primary/10 bg-primary/5 p-4">
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   <Sparkles className="w-3 h-3 text-primary inline mr-1" />
