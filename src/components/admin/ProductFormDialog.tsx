@@ -169,7 +169,10 @@ export function ProductFormDialog({ userId, onSaved, canAddProduct = true, remai
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button><Plus className="w-4 h-4" /> Novo Produto</Button>
+        <Button disabled={!canAddProduct}>
+          <Plus className="w-4 h-4" /> Novo Produto
+          {!canAddProduct && " (limite atingido)"}
+        </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
