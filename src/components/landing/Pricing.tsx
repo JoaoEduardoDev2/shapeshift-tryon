@@ -34,7 +34,7 @@ const plans: Plan[] = [
   },
   {
     name: "Growth",
-    price: "$99",
+    price: "R$299,90",
     period: "/mês",
     description: "Para lojas em crescimento que querem converter mais",
     icon: Zap,
