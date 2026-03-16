@@ -13,6 +13,8 @@ import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminIntegrations from "./pages/AdminIntegrations";
 import AdminSettings from "./pages/AdminSettings";
 import Auth from "./pages/Auth";
+import Onboarding from "./pages/Onboarding";
+import Paywall from "./pages/Paywall";
 import ResetPassword from "./pages/ResetPassword";
 import LookPage from "./pages/LookPage";
 import NotFound from "./pages/NotFound";
