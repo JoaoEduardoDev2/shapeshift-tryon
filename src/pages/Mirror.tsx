@@ -130,6 +130,14 @@ export default function Mirror() {
   const landmarksRef = useRef<any>(null);
   const processingRef = useRef(false);
   const detectIntervalRef = useRef<number>(0);
+  const selectedProductRef = useRef<string | null>(null);
+  const selectedColorRef = useRef<string>("#be185d");
+  const mirroredRef = useRef(true);
+
+  // Keep refs in sync with state
+  selectedProductRef.current = selectedProduct;
+  selectedColorRef.current = selectedColor;
+  mirroredRef.current = mirrored;
 
   const startCamera = useCallback(async () => {
     try {
