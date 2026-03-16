@@ -5,7 +5,7 @@ import { Check, Sparkles, Zap, Crown, Building2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ANNUAL_DISCOUNT } from "@/lib/stripe";
 
-const ANNUAL_DISCOUNT = 0.20; // 20% off
+
 
 interface PlanData {
   name: string;
