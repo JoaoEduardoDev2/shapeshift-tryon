@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Scan, Check, ArrowLeft, ArrowRight, Loader2, Building2, User, Sparkles } from "lucide-react";
+import { Scan, Check, ArrowLeft, Loader2, Building2, User, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,34 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { validateCPF, validateCNPJ, validatePhone, validateEmail, formatCPF, formatCNPJ, formatPhone } from "@/lib/validators";
-
-const plans = [
-  {
-    id: "starter",
-    name: "Starter",
-    price: 29,
-    features: ["50 produtos", "5.000 provas/mês", "Provador por foto", "Analytics básico"],
-  },
-  {
-    id: "growth",
-    name: "Growth",
-    price: 99,
-    popular: true,
-    features: ["300 produtos", "25.000 provas/mês", "Espelho virtual", "Compartilhamento social"],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: 299,
-    features: ["1.000 produtos", "100.000 provas/mês", "Exportar vídeos", "Integrações completas"],
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    price: null,
-    features: ["Produtos ilimitados", "Provas ilimitadas", "White label", "API completa"],
-  },
-];
+import { STRIPE_PLANS, PlanKey } from "@/lib/stripe";
 
 const segments = [
   "Moda feminina", "Moda masculina", "Moda infantil", "Moda fitness",
@@ -50,13 +23,12 @@ const professions = [
 
 export default function Onboarding() {
   const [step, setStep] = useState(1);
-  const [selectedPlan, setSelectedPlan] = useState("");
+  const [selectedPlan, setSelectedPlan] = useState<PlanKey | "">("");
   const [accountType, setAccountType] = useState<"pj" | "pf" | "">("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Form fields
   const [form, setForm] = useState({
     name: "", email: "", password: "", phone: "",
     cpf: "", cnpj: "", companyName: "", storeName: "", segment: "", profession: "",
@@ -112,7 +84,6 @@ export default function Onboarding() {
 
       const userId = data.user?.id;
       if (userId) {
-        // Update profile with extended fields
         await supabase.from("profiles").update({
           full_name: form.name,
           phone: form.phone,
@@ -125,7 +96,6 @@ export default function Onboarding() {
           profession: accountType === "pf" ? form.profession : null,
         }).eq("id", userId);
 
-        // Create subscription with trial
         await supabase.from("subscriptions").insert({
           user_id: userId,
           plan: selectedPlan,
@@ -144,6 +114,8 @@ export default function Onboarding() {
       setLoading(false);
     }
   };
+
+  const planEntries = (Object.entries(STRIPE_PLANS) as [PlanKey, typeof STRIPE_PLANS[PlanKey]][]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -186,12 +158,12 @@ export default function Onboarding() {
                 <p className="text-muted-foreground mt-1">7 dias grátis. Cancele quando quiser.</p>
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
-                {plans.map((plan) => (
+                {planEntries.map(([key, plan]) => (
                   <button
-                    key={plan.id}
-                    onClick={() => { setSelectedPlan(plan.id); setStep(2); }}
+                    key={key}
+                    onClick={() => { setSelectedPlan(key); setStep(2); }}
                     className={`relative text-left rounded-2xl border-2 p-5 transition-all hover:border-primary/60 hover:shadow-[var(--shadow-glow)] ${
-                      selectedPlan === plan.id ? "border-primary bg-primary/5" : "border-border bg-card"
+                      selectedPlan === key ? "border-primary bg-primary/5" : "border-border bg-card"
                     }`}
                   >
                     {plan.popular && (
@@ -202,7 +174,7 @@ export default function Onboarding() {
                     <div className="mb-3">
                       <h3 className="font-bold text-lg">{plan.name}</h3>
                       {plan.price ? (
-                        <p className="text-2xl font-black text-primary">${plan.price}<span className="text-sm font-normal text-muted-foreground">/mês</span></p>
+                        <p className="text-2xl font-black text-primary">R${plan.price}<span className="text-sm font-normal text-muted-foreground">/mês</span></p>
                       ) : (
                         <p className="text-lg font-bold text-muted-foreground">Sob consulta</p>
                       )}
@@ -266,12 +238,16 @@ export default function Onboarding() {
               <div className="text-center">
                 <h1 className="text-2xl font-black">Criar sua conta</h1>
                 <p className="text-muted-foreground mt-1">
-                  Plano <span className="text-primary font-semibold capitalize">{selectedPlan}</span> — 7 dias grátis
+                  Plano <span className="text-primary font-semibold capitalize">{selectedPlan}</span> —{" "}
+                  {selectedPlan && STRIPE_PLANS[selectedPlan]?.price
+                    ? `R$${STRIPE_PLANS[selectedPlan].price}/mês`
+                    : "Sob consulta"
+                  }{" "}
+                  — 7 dias grátis
                 </p>
               </div>
 
               <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
-                {/* Basic fields */}
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="name">Nome completo</Label>
@@ -295,7 +271,6 @@ export default function Onboarding() {
                   {errors.password && <p className="text-xs text-destructive mt-1">{errors.password}</p>}
                 </div>
 
-                {/* PJ fields */}
                 {accountType === "pj" && (
                   <div className="space-y-4 pt-2 border-t border-border">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Dados da empresa</p>
@@ -331,7 +306,6 @@ export default function Onboarding() {
                   </div>
                 )}
 
-                {/* PF fields */}
                 {accountType === "pf" && (
                   <div className="space-y-4 pt-2 border-t border-border">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Dados pessoais</p>
