@@ -19,7 +19,6 @@ interface ProductItem {
 }
 
 const products: ProductItem[] = [
-  // Beauty
   {
     id: "lipstick", name: "Batom", icon: Palette, category: "beauty",
     colors: [
@@ -69,7 +68,6 @@ const products: ProductItem[] = [
       { name: "Escura", color: "#6b3a2a" },
     ],
   },
-  // Accessories
   {
     id: "sunglasses", name: "Óculos de Sol", icon: Glasses, category: "accessories",
     colors: [
@@ -88,31 +86,97 @@ const products: ProductItem[] = [
   },
 ];
 
-// Face landmark indices
+// Generate estimated face landmarks from a bounding box
+// Based on standard face proportions (De Myer's proportions)
+function estimateLandmarksFromBox(box: { x: number; y: number; width: number; height: number }, canvasW: number, canvasH: number) {
+  const cx = (box.x + box.width / 2) / canvasW;
+  const cy = (box.y + box.height / 2) / canvasH;
+  const fw = box.width / canvasW;
+  const fh = box.height / canvasH;
+
+  // Create a sparse landmarks array (only the indices we use)
+  const lm: Record<number, { x: number; y: number; z: number }> = {};
+  const p = (rx: number, ry: number) => ({ x: cx + rx * fw, y: cy + ry * fh, z: 0 });
+
+  // Nose bridge (6)
+  lm[6] = p(0, -0.12);
+
+  // Upper lip landmarks
+  const upperLipY = 0.28;
+  [61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291].forEach((idx, i, arr) => {
+    const t = i / (arr.length - 1);
+    lm[idx] = p(-0.12 + t * 0.24, upperLipY + Math.sin(t * Math.PI) * -0.02);
+  });
+
+  // Lower lip landmarks
+  const lowerLipY = 0.32;
+  [61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291].forEach((idx, i, arr) => {
+    const t = i / (arr.length - 1);
+    lm[idx] = p(-0.12 + t * 0.24, lowerLipY + Math.sin(t * Math.PI) * 0.03);
+  });
+
+  // Cheeks
+  lm[234] = p(-0.38, 0.05);  // Left cheek / left ear
+  lm[454] = p(0.38, 0.05);   // Right cheek / right ear
+
+  // Left eye landmarks
+  const leftEyeCx = -0.15, eyeY = -0.1;
+  [246, 161, 160, 159, 158, 157, 173].forEach((idx, i, arr) => {
+    const t = i / (arr.length - 1);
+    lm[idx] = p(leftEyeCx - 0.06 + t * 0.12, eyeY - Math.sin(t * Math.PI) * 0.015);
+  });
+  [33, 7, 163, 144, 145, 153, 154, 155, 133].forEach((idx, i, arr) => {
+    const t = i / (arr.length - 1);
+    lm[idx] = p(leftEyeCx - 0.06 + t * 0.12, eyeY + Math.sin(t * Math.PI) * 0.008);
+  });
+
+  // Right eye landmarks
+  const rightEyeCx = 0.15;
+  [466, 388, 387, 386, 385, 384, 398].forEach((idx, i, arr) => {
+    const t = i / (arr.length - 1);
+    lm[idx] = p(rightEyeCx - 0.06 + t * 0.12, eyeY - Math.sin(t * Math.PI) * 0.015);
+  });
+  [263, 249, 390, 373, 374, 380, 381, 382, 362].forEach((idx, i, arr) => {
+    const t = i / (arr.length - 1);
+    lm[idx] = p(rightEyeCx - 0.06 + t * 0.12, eyeY + Math.sin(t * Math.PI) * 0.008);
+  });
+
+  // Face outline
+  const faceOutlineIndices = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
+  faceOutlineIndices.forEach((idx, i, arr) => {
+    const angle = (i / arr.length) * Math.PI * 2 - Math.PI / 2;
+    lm[idx] = p(Math.cos(angle) * 0.4, Math.sin(angle) * 0.45);
+  });
+
+  // Return as array-like with proxy for missing indices
+  return new Proxy(lm, {
+    get(target, prop) {
+      const idx = typeof prop === 'string' ? parseInt(prop) : prop;
+      if (typeof idx === 'number' && !isNaN(idx)) {
+        return target[idx] || { x: cx, y: cy, z: 0 };
+      }
+      return (target as any)[prop];
+    }
+  });
+}
+
+// Face landmark indices used by draw functions
 const UPPER_LIP = [61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291];
 const LOWER_LIP = [61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291];
 const LEFT_CHEEK_CENTER = 234;
 const RIGHT_CHEEK_CENTER = 454;
-
-// Eye landmarks
 const LEFT_EYE_UPPER = [246, 161, 160, 159, 158, 157, 173];
 const LEFT_EYE_LOWER = [33, 7, 163, 144, 145, 153, 154, 155, 133];
 const RIGHT_EYE_UPPER = [466, 388, 387, 386, 385, 384, 398];
 const RIGHT_EYE_LOWER = [263, 249, 390, 373, 374, 380, 381, 382, 362];
-
-// Eyebrow landmarks for eyeliner reference
-const LEFT_EYE_OUTLINE = [33, 246, 161, 160, 159, 158, 157, 173, 133, 155, 154, 153, 145, 144, 163, 7];
-const RIGHT_EYE_OUTLINE = [263, 466, 388, 387, 386, 385, 384, 398, 362, 382, 381, 380, 374, 373, 390, 249];
-
-// Nose bridge for glasses
 const NOSE_BRIDGE = 6;
 const LEFT_EYE_OUTER = 33;
 const RIGHT_EYE_OUTER = 263;
 const LEFT_EAR = 234;
 const RIGHT_EAR = 454;
-
-// Face outline for foundation
 const FACE_OUTLINE = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
+
+type DetectionMode = "loading" | "mediapipe" | "facedetector" | "manual";
 
 export default function Mirror() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -121,21 +185,20 @@ export default function Mirror() {
   const [mirrored, setMirrored] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string>("#be185d");
-  const [faceMeshLoaded, setFaceMeshLoaded] = useState(false);
   const [detecting, setDetecting] = useState(false);
   const [activeTab, setActiveTab] = useState<ProductCategory>("beauty");
+  const [detectionMode, setDetectionMode] = useState<DetectionMode>("loading");
+
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number>(0);
-  const faceMeshRef = useRef<any>(null);
   const landmarksRef = useRef<any>(null);
-  const processingRef = useRef(false);
   const detectIntervalRef = useRef<number>(0);
-  const detectingRef = useRef(false);
   const selectedProductRef = useRef<string | null>(null);
   const selectedColorRef = useRef<string>("#be185d");
   const mirroredRef = useRef(true);
+  const faceDetectorRef = useRef<any>(null);
 
-  // Keep refs in sync with state
+  // Keep refs in sync
   selectedProductRef.current = selectedProduct;
   selectedColorRef.current = selectedColor;
   mirroredRef.current = mirrored;
@@ -151,7 +214,7 @@ export default function Mirror() {
         await videoRef.current.play();
       }
       setCameraOn(true);
-      initFaceMesh();
+      initDetection();
     } catch (e) {
       console.error("Camera error:", e);
     }
@@ -166,6 +229,63 @@ export default function Mirror() {
     clearInterval(detectIntervalRef.current);
   }, []);
 
+  const initDetection = async () => {
+    // Strategy 1: Try Chrome's FaceDetector API (no WebGL needed)
+    if ("FaceDetector" in window) {
+      try {
+        const detector = new (window as any).FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
+        faceDetectorRef.current = detector;
+        setDetectionMode("facedetector");
+        console.log("[Mirror] Using FaceDetector API (native)");
+        startFaceDetectorLoop();
+        startRenderLoop();
+        return;
+      } catch (e) {
+        console.warn("[Mirror] FaceDetector API failed:", e);
+      }
+    }
+
+    // Strategy 2: Try MediaPipe FaceMesh
+    try {
+      await loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js");
+      const w = window as any;
+      if (w.FaceMesh) {
+        const faceMesh = new w.FaceMesh({
+          locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/${file}`,
+        });
+        faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.4 });
+        faceMesh.onResults((results: any) => {
+          if (results.multiFaceLandmarks?.length > 0) {
+            landmarksRef.current = results.multiFaceLandmarks[0];
+            setDetecting(true);
+          } else {
+            landmarksRef.current = null;
+            setDetecting(false);
+          }
+        });
+
+        // Warm-up test
+        const video = videoRef.current;
+        if (video) await faceMesh.send({ image: video });
+
+        faceDetectorRef.current = faceMesh;
+        setDetectionMode("mediapipe");
+        console.log("[Mirror] Using MediaPipe FaceMesh");
+        startMediaPipeLoop(faceMesh);
+        startRenderLoop();
+        return;
+      }
+    } catch (e) {
+      console.warn("[Mirror] MediaPipe FaceMesh failed (WebGL unavailable):", e);
+    }
+
+    // Strategy 3: Manual fallback - estimate face at center
+    console.log("[Mirror] Using manual fallback detection");
+    setDetectionMode("manual");
+    startManualDetection();
+    startRenderLoop();
+  };
+
   const loadScript = (src: string): Promise<void> => {
     return new Promise((resolve, reject) => {
       if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
@@ -178,70 +298,61 @@ export default function Mirror() {
     });
   };
 
-  const initFaceMesh = async () => {
-    try {
-      // Load FaceMesh via CDN script to avoid WASM/WebGL bundler issues
-      await loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js");
-      const w = window as any;
-      if (!w.FaceMesh) throw new Error("FaceMesh not loaded from CDN");
-
-      console.log("[Mirror] FaceMesh CDN loaded, initializing...");
-
-      const faceMesh = new w.FaceMesh({
-        locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/${file}`,
-      });
-      faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.4 });
-      faceMesh.onResults((results: any) => {
-        if (results.multiFaceLandmarks?.length > 0) {
-          landmarksRef.current = results.multiFaceLandmarks[0];
-          if (!detectingRef.current) {
-            detectingRef.current = true;
-            setDetecting(true);
-          }
-        } else {
-          landmarksRef.current = null;
-          if (detectingRef.current) {
-            detectingRef.current = false;
-            setDetecting(false);
-          }
-        }
-      });
-
-      // Initialize the model by sending a dummy frame
-      const video = videoRef.current;
-      if (video) {
-        console.log("[Mirror] Warming up FaceMesh model...");
-        await faceMesh.send({ image: video });
-        console.log("[Mirror] FaceMesh warm-up complete");
-      }
-
-      faceMeshRef.current = faceMesh;
-      setFaceMeshLoaded(true);
-      startDetectionLoop();
-      renderLoop();
-      console.log("[Mirror] Detection + render loops started");
-    } catch (e) {
-      console.error("FaceMesh init error:", e);
-    }
-  };
-
-  const startDetectionLoop = () => {
-    // Send frames to FaceMesh at ~15fps, decoupled from render
+  const startMediaPipeLoop = (faceMesh: any) => {
+    let processing = false;
     clearInterval(detectIntervalRef.current);
     detectIntervalRef.current = window.setInterval(() => {
       const video = videoRef.current;
-      if (!video || video.paused || video.ended || !faceMeshRef.current || processingRef.current) return;
-      processingRef.current = true;
-      faceMeshRef.current.send({ image: video }).then(() => {
-        processingRef.current = false;
-      }).catch((err: any) => {
-        console.error("[Mirror] FaceMesh send error:", err);
-        processingRef.current = false;
-      });
+      if (!video || video.paused || video.ended || processing) return;
+      processing = true;
+      faceMesh.send({ image: video }).then(() => { processing = false; }).catch(() => { processing = false; });
     }, 66);
   };
 
-  const renderLoop = () => {
+  const startFaceDetectorLoop = () => {
+    clearInterval(detectIntervalRef.current);
+    detectIntervalRef.current = window.setInterval(async () => {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      if (!video || video.paused || video.ended || !faceDetectorRef.current || !canvas) return;
+
+      try {
+        const faces = await faceDetectorRef.current.detect(video);
+        if (faces.length > 0) {
+          const box = faces[0].boundingBox;
+          landmarksRef.current = estimateLandmarksFromBox(box, video.videoWidth, video.videoHeight);
+          setDetecting(true);
+        } else {
+          landmarksRef.current = null;
+          setDetecting(false);
+        }
+      } catch (e) {
+        // FaceDetector can throw on certain frames
+      }
+    }, 100);
+  };
+
+  const startManualDetection = () => {
+    // Estimate face at center of video (assuming user is facing camera)
+    const video = videoRef.current;
+    if (!video) return;
+
+    clearInterval(detectIntervalRef.current);
+    detectIntervalRef.current = window.setInterval(() => {
+      const v = videoRef.current;
+      if (!v || v.paused || v.ended) return;
+      const w = v.videoWidth;
+      const h = v.videoHeight;
+      // Assume face is roughly centered, taking up ~40% of frame
+      const faceW = w * 0.35;
+      const faceH = h * 0.45;
+      const box = { x: (w - faceW) / 2, y: h * 0.08, width: faceW, height: faceH };
+      landmarksRef.current = estimateLandmarksFromBox(box, w, h);
+      setDetecting(true);
+    }, 200);
+  };
+
+  const startRenderLoop = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
@@ -283,7 +394,8 @@ export default function Mirror() {
     draw();
   };
 
-  const drawLipstick = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number, color: string) => {
+  // --- Draw functions ---
+  const drawLipstick = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
     ctx.globalAlpha = 0.45;
     ctx.fillStyle = color;
     [UPPER_LIP, LOWER_LIP].forEach((lip) => {
@@ -298,7 +410,7 @@ export default function Mirror() {
     ctx.globalAlpha = 1;
   };
 
-  const drawBlush = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number, color: string) => {
+  const drawBlush = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
     const radius = w * 0.04;
     ctx.globalAlpha = 0.25;
     [LEFT_CHEEK_CENTER, RIGHT_CHEEK_CENTER].forEach((idx) => {
@@ -312,18 +424,16 @@ export default function Mirror() {
     ctx.globalAlpha = 1;
   };
 
-  const drawEyeshadow = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number, color: string) => {
+  const drawEyeshadow = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
     ctx.globalAlpha = 0.3;
     ctx.fillStyle = color;
     [LEFT_EYE_UPPER, RIGHT_EYE_UPPER].forEach((eye) => {
       ctx.beginPath();
       const points = eye.map((idx) => ({ x: lm[idx].x * w, y: lm[idx].y * h }));
-      // Extend slightly above for shadow area
       points.forEach((p, i) => {
         const adjusted = { x: p.x, y: p.y - w * 0.012 };
         i === 0 ? ctx.moveTo(adjusted.x, adjusted.y) : ctx.lineTo(adjusted.x, adjusted.y);
       });
-      // Close back along eyelid
       const lowerPoints = (eye === LEFT_EYE_UPPER ? LEFT_EYE_LOWER : RIGHT_EYE_LOWER).map((idx) => ({ x: lm[idx].x * w, y: lm[idx].y * h }));
       lowerPoints.reverse().forEach((p) => ctx.lineTo(p.x, p.y));
       ctx.closePath();
@@ -332,13 +442,11 @@ export default function Mirror() {
     ctx.globalAlpha = 1;
   };
 
-  const drawEyeliner = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number, color: string) => {
+  const drawEyeliner = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
     ctx.globalAlpha = 0.7;
     ctx.strokeStyle = color;
     ctx.lineWidth = Math.max(1.5, w * 0.003);
     ctx.lineCap = "round";
-
-    // Upper eyelid lines
     [LEFT_EYE_UPPER, RIGHT_EYE_UPPER].forEach((eye) => {
       ctx.beginPath();
       eye.forEach((idx, i) => {
@@ -350,7 +458,7 @@ export default function Mirror() {
     ctx.globalAlpha = 1;
   };
 
-  const drawFoundation = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number, color: string) => {
+  const drawFoundation = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
     ctx.globalAlpha = 0.15;
     ctx.fillStyle = color;
     ctx.beginPath();
@@ -363,7 +471,7 @@ export default function Mirror() {
     ctx.globalAlpha = 1;
   };
 
-  const drawSunglasses = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number, color: string) => {
+  const drawSunglasses = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
     const bridge = { x: lm[NOSE_BRIDGE].x * w, y: lm[NOSE_BRIDGE].y * h };
     const leftEye = { x: lm[LEFT_EYE_OUTER].x * w, y: lm[LEFT_EYE_OUTER].y * h };
     const rightEye = { x: lm[RIGHT_EYE_OUTER].x * w, y: lm[RIGHT_EYE_OUTER].y * h };
@@ -379,26 +487,20 @@ export default function Mirror() {
     ctx.strokeStyle = color;
     ctx.lineWidth = Math.max(2, w * 0.004);
 
-    // Left lens
     const lxc = leftEye.x + (bridge.x - leftEye.x) * 0.4;
     const lyc = bridge.y;
     drawRoundedRect(ctx, lxc - lensW / 2, lyc - lensH / 2, lensW, lensH, lensH * 0.3);
-    ctx.fill();
-    ctx.stroke();
+    ctx.fill(); ctx.stroke();
 
-    // Right lens
     const rxc = rightEye.x - (rightEye.x - bridge.x) * 0.4;
     drawRoundedRect(ctx, rxc - lensW / 2, lyc - lensH / 2, lensW, lensH, lensH * 0.3);
-    ctx.fill();
-    ctx.stroke();
+    ctx.fill(); ctx.stroke();
 
-    // Bridge
     ctx.beginPath();
     ctx.moveTo(lxc + lensW / 2, bridge.y);
     ctx.lineTo(rxc - lensW / 2, bridge.y);
     ctx.stroke();
 
-    // Arms
     ctx.beginPath();
     ctx.moveTo(lxc - lensW / 2, lyc - lensH * 0.2);
     ctx.lineTo(leftEar.x, leftEar.y);
@@ -411,8 +513,7 @@ export default function Mirror() {
     ctx.globalAlpha = 1;
   };
 
-  const drawEarrings = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number, color: string) => {
-    // Ear tragion approximate landmarks
+  const drawEarrings = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
     const leftEar = { x: lm[234].x * w, y: lm[234].y * h };
     const rightEar = { x: lm[454].x * w, y: lm[454].y * h };
     const radius = w * 0.012;
@@ -427,7 +528,6 @@ export default function Mirror() {
       ctx.lineWidth = 1;
       ctx.stroke();
 
-      // Small dangling circle
       ctx.beginPath();
       ctx.arc(ear.x, ear.y + w * 0.05, radius * 0.6, 0, Math.PI * 2);
       ctx.fill();
@@ -451,9 +551,14 @@ export default function Mirror() {
 
   useEffect(() => { return () => { stopCamera(); }; }, [stopCamera]);
 
-  // No need to restart renderLoop on state changes — refs keep draw() up-to-date
-
   const filteredProducts = products.filter((p) => p.category === activeTab);
+
+  const modeLabel: Record<DetectionMode, string> = {
+    loading: "INICIALIZANDO...",
+    mediapipe: "MEDIAPIPE 468 LANDMARKS",
+    facedetector: "FACE DETECTOR API",
+    manual: "MODO ESTIMADO",
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -463,7 +568,7 @@ export default function Mirror() {
           <h1 className="text-3xl font-black mb-2">
             Espelho <span className="text-gradient">Virtual</span>
           </h1>
-          <p className="text-muted-foreground mb-6">Detecção facial em tempo real com 468 landmarks</p>
+          <p className="text-muted-foreground mb-6">Prova virtual de maquiagem e acessórios em tempo real</p>
 
           <div className="grid lg:grid-cols-[1fr_340px] gap-6">
             {/* Camera view */}
@@ -488,7 +593,7 @@ export default function Mirror() {
                 <div className="absolute top-4 left-4 flex items-center gap-2">
                   <div className={`w-2.5 h-2.5 rounded-full ${detecting ? "bg-success animate-pulse" : "bg-warning"}`} />
                   <span className="text-xs font-mono glass px-2 py-1 rounded-full">
-                    {detecting ? "FACE DETECTED" : "SCANNING..."}
+                    {detecting ? modeLabel[detectionMode] : "SCANNING..."}
                   </span>
                 </div>
               )}
@@ -562,10 +667,16 @@ export default function Mirror() {
                 <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
                   <h4 className="text-xs font-mono text-primary mb-2">DETECÇÃO ATIVA</h4>
                   <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                    <div>Landmarks: <span className="text-foreground font-mono">468</span></div>
-                    <div>FPS: <span className="text-foreground font-mono">~30</span></div>
-                    <div>Confiança: <span className="text-foreground font-mono">HIGH</span></div>
-                    <div>Iris: <span className="text-foreground font-mono">ON</span></div>
+                    <div>Modo: <span className="text-foreground font-mono">
+                      {detectionMode === "mediapipe" ? "AI" : detectionMode === "facedetector" ? "NATIVO" : "ESTIMADO"}
+                    </span></div>
+                    <div>FPS: <span className="text-foreground font-mono">
+                      {detectionMode === "mediapipe" ? "~15" : detectionMode === "facedetector" ? "~10" : "~5"}
+                    </span></div>
+                    <div>Precisão: <span className="text-foreground font-mono">
+                      {detectionMode === "mediapipe" ? "ALTA" : detectionMode === "facedetector" ? "MÉDIA" : "BÁSICA"}
+                    </span></div>
+                    <div>Status: <span className="text-foreground font-mono">ON</span></div>
                   </div>
                 </div>
               )}
