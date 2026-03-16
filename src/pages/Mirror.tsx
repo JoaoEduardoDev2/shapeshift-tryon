@@ -234,7 +234,8 @@ export default function Mirror() {
       processingRef.current = true;
       faceMeshRef.current.send({ image: video }).then(() => {
         processingRef.current = false;
-      }).catch(() => {
+      }).catch((err: any) => {
+        console.error("[Mirror] FaceMesh send error:", err);
         processingRef.current = false;
       });
     }, 66);
