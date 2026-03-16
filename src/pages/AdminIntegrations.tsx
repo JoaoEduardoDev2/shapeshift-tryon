@@ -120,9 +120,6 @@ export default function AdminIntegrations() {
     );
   }
 
-  useEffect(() => {
-    if (!loading && !user) navigate("/auth");
-  }, [user, loading, navigate]);
 
   const embedScript = `<!-- AI Virtual Fit - Provador Virtual -->
 <script>
