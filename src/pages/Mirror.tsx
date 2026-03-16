@@ -128,6 +128,8 @@ export default function Mirror() {
   const animFrameRef = useRef<number>(0);
   const faceMeshRef = useRef<any>(null);
   const landmarksRef = useRef<any>(null);
+  const processingRef = useRef(false);
+  const detectIntervalRef = useRef<number>(0);
 
   const startCamera = useCallback(async () => {
     try {
