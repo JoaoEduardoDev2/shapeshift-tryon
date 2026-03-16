@@ -292,9 +292,9 @@ export default function Mirror() {
     ctx.globalAlpha = 1;
   };
 
-  const drawEyeshadow = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number) => {
+  const drawEyeshadow = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number, color: string) => {
     ctx.globalAlpha = 0.3;
-    ctx.fillStyle = selectedColor;
+    ctx.fillStyle = color;
     [LEFT_EYE_UPPER, RIGHT_EYE_UPPER].forEach((eye) => {
       ctx.beginPath();
       const points = eye.map((idx) => ({ x: lm[idx].x * w, y: lm[idx].y * h }));
