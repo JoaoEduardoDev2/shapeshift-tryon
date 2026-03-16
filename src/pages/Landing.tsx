@@ -22,6 +22,7 @@ export default function Landing() {
       <Examples />
       <Platforms />
       <Pricing />
+      <Testimonials />
       <Integration />
       <FAQ />
 
