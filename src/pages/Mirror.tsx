@@ -191,6 +191,7 @@ export default function Mirror() {
       });
       faceMeshRef.current = faceMesh;
       setFaceMeshLoaded(true);
+      startDetectionLoop();
       renderLoop();
     } catch (e) {
       console.error("FaceMesh init error:", e);
