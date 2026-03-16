@@ -3,6 +3,7 @@ export const STRIPE_PLANS = {
     name: "Starter",
     price: 149.9,
     price_id: "price_1TBdDaFIwaU6XMYXNwFwIbyR",
+    price_id_annual: "price_1TBgfTFIwaU6XMYX5PsnhKFZ",
     product_id: "prod_U9x79sOee9EsNi",
     popular: false,
     features: ["50 produtos", "5.000 provas/mês", "Provador por foto", "Analytics básico"],
@@ -11,6 +12,7 @@ export const STRIPE_PLANS = {
     name: "Growth",
     price: 299.9,
     price_id: "price_1TBdEmFIwaU6XMYXAqC3qsZH",
+    price_id_annual: "price_1TBgjgFIwaU6XMYXVaCoHj0s",
     product_id: "prod_U9x9AjZwdHTpE8",
     popular: true,
     features: ["300 produtos", "25.000 provas/mês", "Espelho virtual", "Compartilhamento social"],
@@ -19,6 +21,7 @@ export const STRIPE_PLANS = {
     name: "Pro",
     price: 499.9,
     price_id: "price_1TBdFVFIwaU6XMYXYMLm9RZN",
+    price_id_annual: "price_1TBgjxFIwaU6XMYXzodJz3pW",
     product_id: "prod_U9x9pVKGFe4Gzd",
     popular: false,
     features: ["1.000 produtos", "100.000 provas/mês", "Exportar vídeos", "Integrações completas"],
@@ -27,11 +30,14 @@ export const STRIPE_PLANS = {
     name: "Enterprise",
     price: null,
     price_id: null,
+    price_id_annual: null,
     product_id: null,
     popular: false,
     features: ["Produtos ilimitados", "Provas ilimitadas", "White label", "API completa", "Suporte dedicado"],
   },
 } as const;
+
+export const ANNUAL_DISCOUNT = 0.20;
 
 export type PlanKey = keyof typeof STRIPE_PLANS;
 
