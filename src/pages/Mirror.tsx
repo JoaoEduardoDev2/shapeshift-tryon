@@ -130,6 +130,7 @@ export default function Mirror() {
   const landmarksRef = useRef<any>(null);
   const processingRef = useRef(false);
   const detectIntervalRef = useRef<number>(0);
+  const detectingRef = useRef(false);
   const selectedProductRef = useRef<string | null>(null);
   const selectedColorRef = useRef<string>("#be185d");
   const mirroredRef = useRef(true);
@@ -184,23 +185,41 @@ export default function Mirror() {
       const w = window as any;
       if (!w.FaceMesh) throw new Error("FaceMesh not loaded from CDN");
 
+      console.log("[Mirror] FaceMesh CDN loaded, initializing...");
+
       const faceMesh = new w.FaceMesh({
         locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/${file}`,
       });
-      faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.7, minTrackingConfidence: 0.5 });
+      faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.4 });
       faceMesh.onResults((results: any) => {
         if (results.multiFaceLandmarks?.length > 0) {
           landmarksRef.current = results.multiFaceLandmarks[0];
-          setDetecting(true);
+          if (!detectingRef.current) {
+            detectingRef.current = true;
+            setDetecting(true);
+          }
         } else {
           landmarksRef.current = null;
-          setDetecting(false);
+          if (detectingRef.current) {
+            detectingRef.current = false;
+            setDetecting(false);
+          }
         }
       });
+
+      // Initialize the model by sending a dummy frame
+      const video = videoRef.current;
+      if (video) {
+        console.log("[Mirror] Warming up FaceMesh model...");
+        await faceMesh.send({ image: video });
+        console.log("[Mirror] FaceMesh warm-up complete");
+      }
+
       faceMeshRef.current = faceMesh;
       setFaceMeshLoaded(true);
       startDetectionLoop();
       renderLoop();
+      console.log("[Mirror] Detection + render loops started");
     } catch (e) {
       console.error("FaceMesh init error:", e);
     }
@@ -215,7 +234,8 @@ export default function Mirror() {
       processingRef.current = true;
       faceMeshRef.current.send({ image: video }).then(() => {
         processingRef.current = false;
-      }).catch(() => {
+      }).catch((err: any) => {
+        console.error("[Mirror] FaceMesh send error:", err);
         processingRef.current = false;
       });
     }, 66);
