@@ -401,9 +401,9 @@ export default function Mirror() {
     [leftEar, rightEar].forEach((ear) => {
       ctx.beginPath();
       ctx.arc(ear.x, ear.y + w * 0.03, radius, 0, Math.PI * 2);
-      ctx.fillStyle = selectedColor;
+      ctx.fillStyle = color;
       ctx.fill();
-      ctx.strokeStyle = selectedColor;
+      ctx.strokeStyle = color;
       ctx.lineWidth = 1;
       ctx.stroke();
 
