@@ -1,15 +1,40 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Scan, Lock, ArrowRight, Check, Sparkles } from "lucide-react";
+import { Lock, ArrowRight, Check, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const plans = [
-  { id: "starter", name: "Starter", price: 29, features: ["50 produtos", "5.000 provas/mês", "Provador por foto"] },
-  { id: "growth", name: "Growth", price: 99, popular: true, features: ["300 produtos", "25.000 provas/mês", "Espelho virtual"] },
-  { id: "pro", name: "Pro", price: 299, features: ["1.000 produtos", "100.000 provas/mês", "Exportar vídeos"] },
-];
+import { STRIPE_PLANS, PlanKey } from "@/lib/stripe";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Paywall() {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState<string | null>(null);
+
+  const handleSubscribe = async (planKey: PlanKey) => {
+    const plan = STRIPE_PLANS[planKey];
+    if (!plan.price_id) {
+      toast({ title: "Entre em contato para o plano Enterprise", description: "contato@virtualfit.app" });
+      return;
+    }
+    setLoading(planKey);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { priceId: plan.price_id },
+      });
+      if (error) throw error;
+      if (data?.url) window.open(data.url, "_blank");
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const displayPlans = (["starter", "growth", "pro"] as PlanKey[]).map((key) => ({
+    key,
+    ...STRIPE_PLANS[key],
+  }));
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-12">
@@ -22,9 +47,9 @@ export default function Paywall() {
       </p>
 
       <div className="grid sm:grid-cols-3 gap-4 mt-8 max-w-3xl w-full">
-        {plans.map((plan) => (
+        {displayPlans.map((plan) => (
           <div
-            key={plan.id}
+            key={plan.key}
             className={`relative rounded-2xl border-2 p-5 ${
               plan.popular ? "border-primary bg-primary/5" : "border-border bg-card"
             }`}
@@ -35,7 +60,9 @@ export default function Paywall() {
               </span>
             )}
             <h3 className="font-bold">{plan.name}</h3>
-            <p className="text-2xl font-black text-primary mt-1">${plan.price}<span className="text-sm font-normal text-muted-foreground">/mês</span></p>
+            <p className="text-2xl font-black text-primary mt-1">
+              R${plan.price}<span className="text-sm font-normal text-muted-foreground">/mês</span>
+            </p>
             <ul className="mt-3 space-y-1.5">
               {plan.features.map((f) => (
                 <li key={f} className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -43,7 +70,14 @@ export default function Paywall() {
                 </li>
               ))}
             </ul>
-            <Button className="w-full mt-4" size="sm" variant={plan.popular ? "default" : "outline"}>
+            <Button
+              className="w-full mt-4"
+              size="sm"
+              variant={plan.popular ? "default" : "outline"}
+              disabled={loading === plan.key}
+              onClick={() => handleSubscribe(plan.key)}
+            >
+              {loading === plan.key ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
               Assinar agora <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </div>
