@@ -154,6 +154,7 @@ export default function Mirror() {
     setCameraOn(false);
     setDetecting(false);
     cancelAnimationFrame(animFrameRef.current);
+    clearInterval(detectIntervalRef.current);
   }, []);
 
   const loadScript = (src: string): Promise<void> => {
