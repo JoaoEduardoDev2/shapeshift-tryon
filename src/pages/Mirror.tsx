@@ -197,6 +197,21 @@ export default function Mirror() {
     }
   };
 
+  const startDetectionLoop = () => {
+    // Send frames to FaceMesh at ~15fps, decoupled from render
+    clearInterval(detectIntervalRef.current);
+    detectIntervalRef.current = window.setInterval(() => {
+      const video = videoRef.current;
+      if (!video || video.paused || video.ended || !faceMeshRef.current || processingRef.current) return;
+      processingRef.current = true;
+      faceMeshRef.current.send({ image: video }).then(() => {
+        processingRef.current = false;
+      }).catch(() => {
+        processingRef.current = false;
+      });
+    }, 66);
+  };
+
   const renderLoop = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -204,7 +219,7 @@ export default function Mirror() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const draw = async () => {
+    const draw = () => {
       if (!video.paused && !video.ended) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
@@ -212,8 +227,6 @@ export default function Mirror() {
         if (mirrored) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
         ctx.drawImage(video, 0, 0);
         ctx.restore();
-
-        if (faceMeshRef.current) await faceMeshRef.current.send({ image: video });
 
         const landmarks = landmarksRef.current;
         if (landmarks && selectedProduct) {
