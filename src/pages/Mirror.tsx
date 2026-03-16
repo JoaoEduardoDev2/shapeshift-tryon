@@ -431,12 +431,7 @@ export default function Mirror() {
 
   useEffect(() => { return () => { stopCamera(); }; }, [stopCamera]);
 
-  useEffect(() => {
-    if (cameraOn && faceMeshLoaded) {
-      cancelAnimationFrame(animFrameRef.current);
-      renderLoop();
-    }
-  }, [mirrored, selectedProduct, selectedColor, cameraOn, faceMeshLoaded]);
+  // No need to restart renderLoop on state changes — refs keep draw() up-to-date
 
   const filteredProducts = products.filter((p) => p.category === activeTab);
 
