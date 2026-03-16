@@ -173,7 +173,7 @@ export function Pricing() {
           className="mt-16 text-center"
         >
           <p className="text-xs text-muted-foreground">
-            Todos os planos incluem: SSL · LGPD/GDPR · Suporte por email · 14 dias grátis
+            Todos os planos incluem: SSL · LGPD/GDPR · Suporte por email · 7 dias grátis
           </p>
         </motion.div>
       </div>

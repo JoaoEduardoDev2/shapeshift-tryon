@@ -29,7 +29,7 @@ const faqs = [
   },
   {
     q: "Posso testar antes de assinar?",
-    a: "Sim! Todos os planos incluem 14 dias grátis. Cancele quando quiser, sem compromisso.",
+    a: "Sim! Todos os planos incluem 7 dias grátis. Cancele quando quiser, sem compromisso.",
   },
   {
     q: "Como o compartilhamento social aumenta vendas?",
