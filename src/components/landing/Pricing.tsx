@@ -17,7 +17,7 @@ interface Plan {
 const plans: Plan[] = [
   {
     name: "Starter",
-    price: "$29",
+    price: "R$149,90",
     period: "/mês",
     description: "Para lojas começando com provador virtual",
     icon: Sparkles,
@@ -34,7 +34,7 @@ const plans: Plan[] = [
   },
   {
     name: "Growth",
-    price: "$99",
+    price: "R$299,90",
     period: "/mês",
     description: "Para lojas em crescimento que querem converter mais",
     icon: Zap,
@@ -53,7 +53,7 @@ const plans: Plan[] = [
   },
   {
     name: "Pro",
-    price: "$299",
+    price: "R$499,90",
     period: "/mês",
     description: "Para operações profissionais de e-commerce",
     icon: Crown,
