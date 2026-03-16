@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { AlertTriangle, Clock, CreditCard } from "lucide-react";
+import { AlertTriangle, Clock, CreditCard, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Subscription {
@@ -35,6 +35,7 @@ export function TrialBanner() {
   const now = new Date();
   const daysLeft = Math.max(0, Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
   const isExpired = daysLeft === 0;
+  const isUrgent = daysLeft <= 2 && daysLeft > 0;
 
   if (sub.subscription_status === "cancelled") {
     return (
@@ -46,7 +47,7 @@ export function TrialBanner() {
             <p className="text-xs text-muted-foreground">Seu acesso está bloqueado. Assine para continuar.</p>
           </div>
         </div>
-        <Button size="sm" onClick={() => navigate("/pricing")}>
+        <Button size="sm" onClick={() => navigate("/paywall")}>
           <CreditCard className="w-4 h-4 mr-1" /> Assinar agora
         </Button>
       </div>
@@ -63,8 +64,29 @@ export function TrialBanner() {
             <p className="text-xs text-muted-foreground">Para continuar usando o VirtualFit AI, escolha um plano.</p>
           </div>
         </div>
-        <Button size="sm" onClick={() => navigate("/pricing")}>
+        <Button size="sm" onClick={() => navigate("/paywall")}>
           <CreditCard className="w-4 h-4 mr-1" /> Assinar agora
+        </Button>
+      </div>
+    );
+  }
+
+  if (sub.subscription_status === "trial" && isUrgent) {
+    return (
+      <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Flame className="w-5 h-5 text-amber-500 shrink-0" />
+          <div>
+            <p className="font-semibold text-sm">
+              Seu teste expira em <span className="text-amber-500 font-bold">{daysLeft} {daysLeft === 1 ? "dia" : "dias"}</span>!
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Assine agora para não perder acesso. Plano <span className="capitalize font-semibold">{sub.plan}</span>.
+            </p>
+          </div>
+        </div>
+        <Button size="sm" variant="outline" className="border-amber-500/50 text-amber-500 hover:bg-amber-500/10" onClick={() => navigate("/paywall")}>
+          <CreditCard className="w-4 h-4 mr-1" /> Escolher plano
         </Button>
       </div>
     );
