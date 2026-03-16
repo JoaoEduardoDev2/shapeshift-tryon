@@ -59,14 +59,12 @@ export default function Auth() {
               <Scan className="w-7 h-7 text-primary-foreground" />
             </div>
             <h1 className="text-2xl font-black">
-              {showForgot ? "Recuperar Senha" : isLogin ? "Entrar" : "Criar Conta"}
+              {showForgot ? "Recuperar Senha" : "Entrar"}
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
               {showForgot
                 ? "Enviaremos um link de recuperação"
-                : isLogin
-                ? "Acesse o provador virtual"
-                : "Crie sua conta para salvar looks"}
+                : "Acesse o provador virtual"}
             </p>
           </div>
 
