@@ -17,7 +17,7 @@ interface Plan {
 const plans: Plan[] = [
   {
     name: "Starter",
-    price: "$29",
+    price: "R$149,90",
     period: "/mês",
     description: "Para lojas começando com provador virtual",
     icon: Sparkles,
