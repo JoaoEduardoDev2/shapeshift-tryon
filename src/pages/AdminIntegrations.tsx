@@ -1,13 +1,14 @@
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Check, Copy, ExternalLink, Loader2, ShoppingBag, X } from "lucide-react";
+import { Check, Copy, ExternalLink, Loader2, Lock, ShoppingBag, X } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
 
 const platforms = [
   { name: "Shopify", logo: "🟢", status: "available", region: "Global", key: "shopify" },
