@@ -130,6 +130,7 @@ export default function Mirror() {
   const landmarksRef = useRef<any>(null);
   const processingRef = useRef(false);
   const detectIntervalRef = useRef<number>(0);
+  const detectingRef = useRef(false);
   const selectedProductRef = useRef<string | null>(null);
   const selectedColorRef = useRef<string>("#be185d");
   const mirroredRef = useRef(true);
