@@ -53,6 +53,8 @@ const defaultTryonMode = (category: string): string => {
 interface ProductFormDialogProps {
   userId: string;
   onSaved: () => void;
+  canAddProduct?: boolean;
+  remainingProducts?: number;
 }
 
 export function ProductFormDialog({ userId, onSaved }: ProductFormDialogProps) {
