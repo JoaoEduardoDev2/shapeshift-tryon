@@ -1,11 +1,13 @@
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
-import { Check, Copy, ExternalLink } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Check, Copy, ExternalLink, Loader2, ShoppingBag } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const platforms = [
   { name: "Shopify", logo: "🟢", status: "available", region: "Global" },
@@ -36,6 +38,12 @@ export default function AdminIntegrations() {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
 
+  // Shopify import state
+  const [showShopify, setShowShopify] = useState(false);
+  const [shopifyUrl, setShopifyUrl] = useState("");
+  const [shopifyKey, setShopifyKey] = useState("");
+  const [importing, setImporting] = useState(false);
+
   useEffect(() => {
     if (!loading && !user) navigate("/auth");
   }, [user, loading, navigate]);
@@ -57,10 +65,115 @@ export default function AdminIntegrations() {
     toast({ title: "Script copiado!" });
   };
 
+  const handleShopifyImport = async () => {
+    if (!shopifyUrl.trim() || !shopifyKey.trim()) {
+      toast({ title: "Preencha a URL e a API Key", variant: "destructive" });
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      const res = await fetch(
+        `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/shopify-import`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            store_url: shopifyUrl,
+            api_key: shopifyKey,
+          }),
+        }
+      );
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        toast({
+          title: "Erro ao importar",
+          description: result.error || "Verifique a URL e API Key",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Importação concluída!",
+        description: `${result.imported} produtos importados, ${result.skipped} ignorados (de ${result.total} total)`,
+      });
+      setShowShopify(false);
+      setShopifyUrl("");
+      setShopifyKey("");
+    } catch (err) {
+      toast({ title: "Erro de conexão", variant: "destructive" });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handlePlatformClick = (name: string) => {
+    if (name === "Shopify") {
+      setShowShopify(true);
+    } else {
+      toast({ title: `Integração ${name} em breve!` });
+    }
+  };
+
   return (
     <AdminLayout>
       <h1 className="text-3xl font-black mb-1">Integrações</h1>
       <p className="text-muted-foreground mb-8">Conecte sua loja e instale o provador virtual</p>
+
+      {/* Shopify Import Modal */}
+      {showShopify && (
+        <div className="rounded-2xl border-2 border-primary/30 bg-card overflow-hidden mb-8 animate-in fade-in slide-in-from-top-2">
+          <div className="p-6 border-b border-border flex items-center gap-3">
+            <ShoppingBag className="w-5 h-5 text-primary" />
+            <div>
+              <h3 className="font-bold">Conectar Shopify</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Insira a URL da sua loja e o Access Token da Admin API
+              </p>
+            </div>
+          </div>
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">URL da loja</label>
+              <Input
+                placeholder="minha-loja.myshopify.com"
+                value={shopifyUrl}
+                onChange={(e) => setShopifyUrl(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Admin API Access Token</label>
+              <Input
+                type="password"
+                placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxx"
+                value={shopifyKey}
+                onChange={(e) => setShopifyKey(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Encontre em Shopify Admin → Settings → Apps → Develop apps → Admin API access token
+              </p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button onClick={handleShopifyImport} disabled={importing}>
+                {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingBag className="w-4 h-4" />}
+                {importing ? "Importando..." : "Importar Produtos"}
+              </Button>
+              <Button variant="outline" onClick={() => setShowShopify(false)}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Embed Script */}
       <div className="rounded-2xl border border-border bg-card overflow-hidden mb-8">
@@ -95,7 +208,7 @@ export default function AdminIntegrations() {
                 </div>
               </div>
               {p.status === "available" ? (
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" onClick={() => handlePlatformClick(p.name)}>
                   <ExternalLink className="w-3 h-3" />
                   Conectar
                 </Button>
