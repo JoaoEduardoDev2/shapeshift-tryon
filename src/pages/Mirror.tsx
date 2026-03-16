@@ -183,6 +183,8 @@ type DetectionMode = "loading" | "mediapipe" | "facedetector" | "manual";
 
 export default function Mirror() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { limits, loading: planLoading } = usePlanLimits();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [cameraOn, setCameraOn] = useState(false);
@@ -192,6 +194,24 @@ export default function Mirror() {
   const [detecting, setDetecting] = useState(false);
   const [activeTab, setActiveTab] = useState<ProductCategory>("beauty");
   const [detectionMode, setDetectionMode] = useState<DetectionMode>("loading");
+
+  if (!planLoading && !limits.hasMirror) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="pt-20 flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-6">
+            <Lock className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h1 className="text-2xl font-black mb-2">Espelho Virtual</h1>
+          <p className="text-muted-foreground max-w-md mb-6">
+            O espelho virtual com câmera ao vivo está disponível a partir do plano <strong>Growth</strong>.
+          </p>
+          <Button onClick={() => navigate("/paywall")}>Fazer Upgrade</Button>
+        </div>
+      </div>
+    );
+  }
 
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number>(0);
