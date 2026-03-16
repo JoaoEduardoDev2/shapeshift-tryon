@@ -20,6 +20,7 @@ export const STRIPE_PLANS = {
     price: 499,
     price_id: "price_1TBciaFIwaU6XMYXYR7JHbPB",
     product_id: "prod_U9wb8G61ZjBPuj",
+    popular: false,
     features: ["1.000 produtos", "100.000 provas/mês", "Exportar vídeos", "Integrações completas"],
   },
   enterprise: {
@@ -27,6 +28,7 @@ export const STRIPE_PLANS = {
     price: null,
     price_id: null,
     product_id: null,
+    popular: false,
     features: ["Produtos ilimitados", "Provas ilimitadas", "White label", "API completa", "Suporte dedicado"],
   },
 } as const;
