@@ -130,6 +130,14 @@ export default function Mirror() {
   const landmarksRef = useRef<any>(null);
   const processingRef = useRef(false);
   const detectIntervalRef = useRef<number>(0);
+  const selectedProductRef = useRef<string | null>(null);
+  const selectedColorRef = useRef<string>("#be185d");
+  const mirroredRef = useRef(true);
+
+  // Keep refs in sync with state
+  selectedProductRef.current = selectedProduct;
+  selectedColorRef.current = selectedColor;
+  mirroredRef.current = mirrored;
 
   const startCamera = useCallback(async () => {
     try {
@@ -224,25 +232,28 @@ export default function Mirror() {
       if (!video.paused && !video.ended) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
+        const isMirrored = mirroredRef.current;
         ctx.save();
-        if (mirrored) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
+        if (isMirrored) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
         ctx.drawImage(video, 0, 0);
         ctx.restore();
 
         const landmarks = landmarksRef.current;
-        if (landmarks && selectedProduct) {
+        const product = selectedProductRef.current;
+        const color = selectedColorRef.current;
+        if (landmarks && product) {
           ctx.save();
-          if (mirrored) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
+          if (isMirrored) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
           const w = canvas.width, h = canvas.height;
 
-          switch (selectedProduct) {
-            case "lipstick": drawLipstick(ctx, landmarks, w, h); break;
-            case "blush": drawBlush(ctx, landmarks, w, h); break;
-            case "eyeshadow": drawEyeshadow(ctx, landmarks, w, h); break;
-            case "eyeliner": drawEyeliner(ctx, landmarks, w, h); break;
-            case "foundation": drawFoundation(ctx, landmarks, w, h); break;
-            case "sunglasses": drawSunglasses(ctx, landmarks, w, h); break;
-            case "earrings": drawEarrings(ctx, landmarks, w, h); break;
+          switch (product) {
+            case "lipstick": drawLipstick(ctx, landmarks, w, h, color); break;
+            case "blush": drawBlush(ctx, landmarks, w, h, color); break;
+            case "eyeshadow": drawEyeshadow(ctx, landmarks, w, h, color); break;
+            case "eyeliner": drawEyeliner(ctx, landmarks, w, h, color); break;
+            case "foundation": drawFoundation(ctx, landmarks, w, h, color); break;
+            case "sunglasses": drawSunglasses(ctx, landmarks, w, h, color); break;
+            case "earrings": drawEarrings(ctx, landmarks, w, h, color); break;
           }
           ctx.restore();
         }
@@ -252,9 +263,9 @@ export default function Mirror() {
     draw();
   };
 
-  const drawLipstick = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number) => {
+  const drawLipstick = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number, color: string) => {
     ctx.globalAlpha = 0.45;
-    ctx.fillStyle = selectedColor;
+    ctx.fillStyle = color;
     [UPPER_LIP, LOWER_LIP].forEach((lip) => {
       ctx.beginPath();
       lip.forEach((idx, i) => {
@@ -267,13 +278,13 @@ export default function Mirror() {
     ctx.globalAlpha = 1;
   };
 
-  const drawBlush = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number) => {
+  const drawBlush = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number, color: string) => {
     const radius = w * 0.04;
     ctx.globalAlpha = 0.25;
     [LEFT_CHEEK_CENTER, RIGHT_CHEEK_CENTER].forEach((idx) => {
       const x = lm[idx].x * w, y = lm[idx].y * h;
       const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
-      grad.addColorStop(0, selectedColor);
+      grad.addColorStop(0, color);
       grad.addColorStop(1, "transparent");
       ctx.fillStyle = grad;
       ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
@@ -281,9 +292,9 @@ export default function Mirror() {
     ctx.globalAlpha = 1;
   };
 
-  const drawEyeshadow = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number) => {
+  const drawEyeshadow = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number, color: string) => {
     ctx.globalAlpha = 0.3;
-    ctx.fillStyle = selectedColor;
+    ctx.fillStyle = color;
     [LEFT_EYE_UPPER, RIGHT_EYE_UPPER].forEach((eye) => {
       ctx.beginPath();
       const points = eye.map((idx) => ({ x: lm[idx].x * w, y: lm[idx].y * h }));
@@ -301,9 +312,9 @@ export default function Mirror() {
     ctx.globalAlpha = 1;
   };
 
-  const drawEyeliner = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number) => {
+  const drawEyeliner = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number, color: string) => {
     ctx.globalAlpha = 0.7;
-    ctx.strokeStyle = selectedColor;
+    ctx.strokeStyle = color;
     ctx.lineWidth = Math.max(1.5, w * 0.003);
     ctx.lineCap = "round";
 
@@ -319,9 +330,9 @@ export default function Mirror() {
     ctx.globalAlpha = 1;
   };
 
-  const drawFoundation = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number) => {
+  const drawFoundation = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number, color: string) => {
     ctx.globalAlpha = 0.15;
-    ctx.fillStyle = selectedColor;
+    ctx.fillStyle = color;
     ctx.beginPath();
     FACE_OUTLINE.forEach((idx, i) => {
       const x = lm[idx].x * w, y = lm[idx].y * h;
@@ -332,7 +343,7 @@ export default function Mirror() {
     ctx.globalAlpha = 1;
   };
 
-  const drawSunglasses = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number) => {
+  const drawSunglasses = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number, color: string) => {
     const bridge = { x: lm[NOSE_BRIDGE].x * w, y: lm[NOSE_BRIDGE].y * h };
     const leftEye = { x: lm[LEFT_EYE_OUTER].x * w, y: lm[LEFT_EYE_OUTER].y * h };
     const rightEye = { x: lm[RIGHT_EYE_OUTER].x * w, y: lm[RIGHT_EYE_OUTER].y * h };
@@ -344,8 +355,8 @@ export default function Mirror() {
     const lensH = lensW * 0.7;
 
     ctx.globalAlpha = 0.75;
-    ctx.fillStyle = selectedColor === "#d4a017" ? "rgba(80, 60, 20, 0.5)" : "rgba(0,0,0,0.7)";
-    ctx.strokeStyle = selectedColor;
+    ctx.fillStyle = color === "#d4a017" ? "rgba(80, 60, 20, 0.5)" : "rgba(0,0,0,0.7)";
+    ctx.strokeStyle = color;
     ctx.lineWidth = Math.max(2, w * 0.004);
 
     // Left lens
@@ -380,7 +391,7 @@ export default function Mirror() {
     ctx.globalAlpha = 1;
   };
 
-  const drawEarrings = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number) => {
+  const drawEarrings = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number, color: string) => {
     // Ear tragion approximate landmarks
     const leftEar = { x: lm[234].x * w, y: lm[234].y * h };
     const rightEar = { x: lm[454].x * w, y: lm[454].y * h };
@@ -390,9 +401,9 @@ export default function Mirror() {
     [leftEar, rightEar].forEach((ear) => {
       ctx.beginPath();
       ctx.arc(ear.x, ear.y + w * 0.03, radius, 0, Math.PI * 2);
-      ctx.fillStyle = selectedColor;
+      ctx.fillStyle = color;
       ctx.fill();
-      ctx.strokeStyle = selectedColor;
+      ctx.strokeStyle = color;
       ctx.lineWidth = 1;
       ctx.stroke();
 
@@ -420,12 +431,7 @@ export default function Mirror() {
 
   useEffect(() => { return () => { stopCamera(); }; }, [stopCamera]);
 
-  useEffect(() => {
-    if (cameraOn && faceMeshLoaded) {
-      cancelAnimationFrame(animFrameRef.current);
-      renderLoop();
-    }
-  }, [mirrored, selectedProduct, selectedColor, cameraOn, faceMeshLoaded]);
+  // No need to restart renderLoop on state changes — refs keep draw() up-to-date
 
   const filteredProducts = products.filter((p) => p.category === activeTab);
 
