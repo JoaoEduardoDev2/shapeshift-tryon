@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
+import { SubscriptionGuard } from "@/components/SubscriptionGuard";
 import Landing from "./pages/Landing";
 import Mirror from "./pages/Mirror";
 import PhotoTryOn from "./pages/PhotoTryOn";
@@ -32,11 +33,11 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/mirror" element={<Mirror />} />
             <Route path="/photo" element={<PhotoTryOn />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="/admin/products" element={<AdminProducts />} />
-            <Route path="/admin/analytics" element={<AdminAnalytics />} />
-            <Route path="/admin/integrations" element={<AdminIntegrations />} />
-            <Route path="/admin/settings" element={<AdminSettings />} />
+            <Route path="/admin" element={<SubscriptionGuard><Admin /></SubscriptionGuard>} />
+            <Route path="/admin/products" element={<SubscriptionGuard><AdminProducts /></SubscriptionGuard>} />
+            <Route path="/admin/analytics" element={<SubscriptionGuard><AdminAnalytics /></SubscriptionGuard>} />
+            <Route path="/admin/integrations" element={<SubscriptionGuard><AdminIntegrations /></SubscriptionGuard>} />
+            <Route path="/admin/settings" element={<SubscriptionGuard><AdminSettings /></SubscriptionGuard>} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/paywall" element={<Paywall />} />
