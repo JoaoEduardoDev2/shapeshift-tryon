@@ -263,7 +263,7 @@ export default function Mirror() {
     draw();
   };
 
-  const drawLipstick = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number) => {
+  const drawLipstick = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number, color: string) => {
     ctx.globalAlpha = 0.45;
     ctx.fillStyle = selectedColor;
     [UPPER_LIP, LOWER_LIP].forEach((lip) => {
