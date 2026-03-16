@@ -57,7 +57,7 @@ interface ProductFormDialogProps {
   remainingProducts?: number;
 }
 
-export function ProductFormDialog({ userId, onSaved }: ProductFormDialogProps) {
+export function ProductFormDialog({ userId, onSaved, canAddProduct = true, remainingProducts }: ProductFormDialogProps) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
