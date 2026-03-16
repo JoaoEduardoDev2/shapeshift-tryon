@@ -20,10 +20,10 @@ const code = `<!-- Adicione ao seu site -->
 </button>`;
 
 const endpoints = [
-  { method: "POST", path: "/v1/upload-product", desc: "Cadastrar produto (PNG, 3D, textura)" },
-  { method: "POST", path: "/v1/tryon/start", desc: "Iniciar sessão de prova" },
-  { method: "POST", path: "/v1/tryon/warp", desc: "Renderizar roupa no corpo" },
-  { method: "GET", path: "/v1/tryon/result/:id", desc: "Obter resultado" },
+  { method: "POST", path: "/upload-product", desc: "Cadastrar produto (nome, imagem, categoria, preço)" },
+  { method: "POST", path: "/tryon-start", desc: "Iniciar sessão de prova com product_id e foto" },
+  { method: "POST", path: "/tryon-warp", desc: "Renderizar roupa no corpo via IA generativa" },
+  { method: "GET", path: "/tryon-result/:id", desc: "Obter imagem do resultado gerado" },
 ];
 
 export function Integration() {
