@@ -79,6 +79,8 @@ export default function PhotoTryOn() {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { canDoTryon, remainingTryons, limits, plan } = usePlanLimits();
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
