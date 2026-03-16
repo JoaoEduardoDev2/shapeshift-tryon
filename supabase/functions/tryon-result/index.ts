@@ -12,6 +12,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -21,10 +22,9 @@ serve(async (req) => {
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      { auth: { persistSession: false } }
     );
-
 
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: authError } = await supabase.auth.getUser(token);
@@ -40,13 +40,12 @@ serve(async (req) => {
       });
     }
 
-    // Extract result_id from URL
+    // Extract result_id from query params or URL path
     const url = new URL(req.url);
-    const pathParts = url.pathname.split("/");
-    const resultId = pathParts[pathParts.length - 1];
+    const resultId = url.searchParams.get("id");
 
-    if (!resultId || resultId === "tryon-result") {
-      return new Response(JSON.stringify({ error: "result_id is required in the URL path" }), {
+    if (!resultId) {
+      return new Response(JSON.stringify({ error: "id query parameter is required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

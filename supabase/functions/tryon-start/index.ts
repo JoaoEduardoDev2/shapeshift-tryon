@@ -12,6 +12,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -21,10 +22,9 @@ serve(async (req) => {
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      { auth: { persistSession: false } }
     );
-
 
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: authError } = await supabase.auth.getUser(token);
