@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, Share2, Copy, Check, MessageCircle, Instagram, Facebook } from "lucide-react";
+import { Download, Share2, Copy, Check, MessageCircle, Instagram, Facebook, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
 
 interface SharePanelProps {
   imageBase64: string;
