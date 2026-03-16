@@ -1,9 +1,10 @@
 import { useRef, useEffect, useState, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/landing/Navbar";
 import { Button } from "@/components/ui/button";
-import { Camera, CameraOff, FlipHorizontal, Palette, Glasses, Sparkles, Eye, Brush, Crown } from "lucide-react";
+import { Camera, CameraOff, FlipHorizontal, Palette, Glasses, Sparkles, Eye, Brush, Crown, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
 
 type ProductCategory = "beauty" | "accessories";
 
