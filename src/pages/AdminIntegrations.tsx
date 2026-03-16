@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 const platforms = [
   { name: "Shopify", logo: "🟢", status: "available", region: "Global", key: "shopify" },
   { name: "WooCommerce", logo: "🟣", status: "available", region: "Global", key: "woocommerce" },
-  { name: "Magento", logo: "🟠", status: "available", region: "Global", key: "magento" },
+  { name: "Magento", logo: "🟠", status: "coming", region: "Global", key: "magento" },
   { name: "VTEX", logo: "🔴", status: "available", region: "Global", key: "vtex" },
   { name: "BigCommerce", logo: "🔵", status: "coming", region: "Global", key: "bigcommerce" },
   { name: "Wix", logo: "⚫", status: "coming", region: "Global", key: "wix" },
@@ -26,22 +26,43 @@ const platforms = [
 ];
 
 const socialCommerce = [
-  { name: "TikTok Shop", logo: "🎵", status: "coming" },
-  { name: "Instagram Shop", logo: "📸", status: "coming" },
-  { name: "Facebook Shop", logo: "📘", status: "coming" },
-  { name: "Pinterest Shopping", logo: "📌", status: "coming" },
+  { name: "TikTok Shop", logo: "🎵", status: "available", key: "tiktok_shop" },
+  { name: "Instagram Shop", logo: "📸", status: "coming", key: "instagram_shop" },
+  { name: "Facebook Shop", logo: "📘", status: "coming", key: "facebook_shop" },
+  { name: "Pinterest Shopping", logo: "📌", status: "coming", key: "pinterest_shop" },
 ];
 
-type ActivePlatform = "shopify" | "nuvemshop" | "tray" | null;
+interface FieldConfig {
+  key: string;
+  label: string;
+  placeholder: string;
+  type?: string;
+  hint?: string;
+}
 
-const platformForms: Record<string, { fields: { key: string; label: string; placeholder: string; type?: string; hint?: string }[]; functionName: string; bodyMapper: (vals: Record<string, string>) => Record<string, string> }> = {
+const platformForms: Record<string, { fields: FieldConfig[]; functionName: string }> = {
   shopify: {
     fields: [
       { key: "store_url", label: "URL da loja", placeholder: "minha-loja.myshopify.com" },
       { key: "api_key", label: "Admin API Access Token", placeholder: "shpat_xxxxxxxxxxxxxxxxxxxxxxxx", type: "password", hint: "Shopify Admin → Settings → Apps → Develop apps → Admin API access token" },
     ],
     functionName: "shopify-import",
-    bodyMapper: (v) => v,
+  },
+  woocommerce: {
+    fields: [
+      { key: "store_url", label: "URL do site", placeholder: "https://minha-loja.com.br" },
+      { key: "consumer_key", label: "Consumer Key", placeholder: "ck_xxxxxxxxxxxxxxxxxxxxxxxx", type: "password", hint: "WooCommerce → Settings → Advanced → REST API → Add key" },
+      { key: "consumer_secret", label: "Consumer Secret", placeholder: "cs_xxxxxxxxxxxxxxxxxxxxxxxx", type: "password" },
+    ],
+    functionName: "woocommerce-import",
+  },
+  vtex: {
+    fields: [
+      { key: "account_name", label: "Account Name", placeholder: "minha-loja", hint: "Nome da conta VTEX (ex: minha-loja.vtexcommercestable.com.br)" },
+      { key: "app_key", label: "App Key", placeholder: "vtexappkey-minha-loja-XXXXXX", type: "password", hint: "VTEX Admin → Account Settings → Application Keys" },
+      { key: "app_token", label: "App Token", placeholder: "XXXXXXXXXXXXXXXXXXXXXXXX", type: "password" },
+    ],
+    functionName: "vtex-import",
   },
   nuvemshop: {
     fields: [
@@ -49,7 +70,6 @@ const platformForms: Record<string, { fields: { key: string; label: string; plac
       { key: "access_token", label: "Access Token", placeholder: "xxxxxxxxxxxxxxxxxxxxxxxx", type: "password", hint: "Gerado ao criar um app em partners.nuvemshop.com.br" },
     ],
     functionName: "nuvemshop-import",
-    bodyMapper: (v) => v,
   },
   tray: {
     fields: [
@@ -57,7 +77,14 @@ const platformForms: Record<string, { fields: { key: string; label: string; plac
       { key: "access_token", label: "Access Token", placeholder: "xxxxxxxxxxxxxxxxxxxxxxxx", type: "password", hint: "Gerado pela autenticação OAuth da Tray" },
     ],
     functionName: "tray-import",
-    bodyMapper: (v) => v,
+  },
+  tiktok_shop: {
+    fields: [
+      { key: "app_key", label: "App Key", placeholder: "xxxxxxxxxxxxxxxx", hint: "TikTok Shop Partner Center → App Management → App Key" },
+      { key: "app_secret", label: "Access Token", placeholder: "xxxxxxxxxxxxxxxxxxxxxxxx", type: "password", hint: "Token de acesso gerado via TikTok Shop Open API" },
+      { key: "shop_cipher", label: "Shop Cipher (opcional)", placeholder: "xxxxxxxx" },
+    ],
+    functionName: "tiktok-shop-import",
   },
 };
 
@@ -66,7 +93,7 @@ export default function AdminIntegrations() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
-  const [activePlatform, setActivePlatform] = useState<ActivePlatform>(null);
+  const [activePlatform, setActivePlatform] = useState<string | null>(null);
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [importing, setImporting] = useState(false);
 
@@ -92,11 +119,11 @@ export default function AdminIntegrations() {
   };
 
   const handleImport = async () => {
-    if (!activePlatform) return;
+    if (!activePlatform || !platformForms[activePlatform]) return;
     const config = platformForms[activePlatform];
-    const missing = config.fields.some((f) => !formValues[f.key]?.trim());
+    const missing = config.fields.some((f) => !f.key.includes("opcional") && !formValues[f.key]?.trim());
     if (missing) {
-      toast({ title: "Preencha todos os campos", variant: "destructive" });
+      toast({ title: "Preencha todos os campos obrigatórios", variant: "destructive" });
       return;
     }
 
@@ -110,7 +137,7 @@ export default function AdminIntegrations() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify(config.bodyMapper(formValues)),
+          body: JSON.stringify(formValues),
         }
       );
 
@@ -135,14 +162,14 @@ export default function AdminIntegrations() {
 
   const handlePlatformClick = (key: string) => {
     if (platformForms[key]) {
-      setActivePlatform(key as ActivePlatform);
+      setActivePlatform(key);
       setFormValues({});
     } else {
-      toast({ title: `Integração em breve!` });
+      toast({ title: "Integração em breve!" });
     }
   };
 
-  const activeName = platforms.find((p) => p.key === activePlatform)?.name;
+  const activeName = [...platforms, ...socialCommerce].find((p) => p.key === activePlatform)?.name;
 
   return (
     <AdminLayout>
@@ -236,12 +263,20 @@ export default function AdminIntegrations() {
         <h3 className="text-xl font-bold mb-4">Social Commerce</h3>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {socialCommerce.map((p) => (
-            <div key={p.name} className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
-              <span className="text-2xl">{p.logo}</span>
-              <div>
-                <h4 className="font-medium text-sm">{p.name}</h4>
-                <span className="text-xs text-muted-foreground">Em breve</span>
+            <div key={p.name} className="rounded-xl border border-border bg-card p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{p.logo}</span>
+                <div>
+                  <h4 className="font-medium text-sm">{p.name}</h4>
+                  {p.status === "coming" && <span className="text-xs text-muted-foreground">Em breve</span>}
+                </div>
               </div>
+              {p.status === "available" ? (
+                <Button size="sm" variant={activePlatform === p.key ? "default" : "outline"} onClick={() => handlePlatformClick(p.key)}>
+                  <ExternalLink className="w-3 h-3" />
+                  Conectar
+                </Button>
+              ) : null}
             </div>
           ))}
         </div>
