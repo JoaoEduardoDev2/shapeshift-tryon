@@ -106,7 +106,14 @@ export default function AdminProducts() {
           <h1 className="text-3xl font-black">Produtos</h1>
           <p className="text-muted-foreground">Gerencie seu catálogo com provador inteligente</p>
         </div>
-        {user && <ProductFormDialog userId={user.id} onSaved={fetchProducts} />}
+        {user && (
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">
+              {products.length}/{limits.maxProducts === Infinity ? "∞" : limits.maxProducts} produtos
+            </span>
+            <ProductFormDialog userId={user.id} onSaved={fetchProducts} canAddProduct={canAddProduct} remainingProducts={remainingProducts} />
+          </div>
+        )}
       </div>
 
       <div className="flex gap-3 mb-6">
