@@ -147,6 +147,7 @@ export function ProductFormDialog({ userId, onSaved }: ProductFormDialogProps) {
       skin_tone: isFoundation ? form.skin_tone || null : null,
       undertone: isFoundation ? form.undertone || null : null,
       finish: isMakeup ? form.finish || null : null,
+      intensity: isMakeup ? form.intensity : 80,
     } as any);
     if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
