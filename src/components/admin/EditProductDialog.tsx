@@ -1,11 +1,11 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Loader2, Trash2, Upload, Camera, Image, RefreshCw, Pipette } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Loader2, Trash2, Upload, Camera, Image, RefreshCw, Pipette } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -38,26 +38,35 @@ const finishOptions = [
   { value: "cremoso", label: "Cremoso" },
 ];
 
-const defaultTryonMode = (category: string): string => {
-  switch (category) {
-    case "eyewear":
-    case "makeup":
-      return "mirror";
-    case "shoes":
-      return "photo";
-    default:
-      return "both";
-  }
-};
+interface Product {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string;
+  image_url: string | null;
+  sku: string | null;
+  price: number | null;
+  tryon_mode: string;
+  makeup_type: string | null;
+  color_hex: string | null;
+  color_rgb: string | null;
+  color_tone: string | null;
+  skin_tone: string | null;
+  undertone: string | null;
+  finish: string | null;
+  intensity?: number | null;
+}
 
-interface ProductFormDialogProps {
+interface EditProductDialogProps {
+  product: Product;
   userId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onSaved: () => void;
 }
 
-export function ProductFormDialog({ userId, onSaved }: ProductFormDialogProps) {
+export function EditProductDialog({ product, userId, open, onOpenChange, onSaved }: EditProductDialogProps) {
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [detecting, setDetecting] = useState(false);
@@ -81,12 +90,30 @@ export function ProductFormDialog({ userId, onSaved }: ProductFormDialogProps) {
     intensity: 80,
   });
 
+  useEffect(() => {
+    if (open && product) {
+      setForm({
+        name: product.name || "",
+        description: product.description || "",
+        category: product.category || "tops",
+        sku: product.sku || "",
+        price: product.price?.toString() || "",
+        image_url: product.image_url || "",
+        tryon_mode: product.tryon_mode || "both",
+        makeup_type: product.makeup_type || "",
+        color_hex: product.color_hex || "",
+        color_rgb: product.color_rgb || "",
+        color_tone: product.color_tone || "",
+        skin_tone: product.skin_tone || "",
+        undertone: product.undertone || "",
+        finish: product.finish || "",
+        intensity: product.intensity ?? 80,
+      });
+    }
+  }, [open, product]);
+
   const isMakeup = form.category === "makeup";
   const isFoundation = form.makeup_type === "foundation" || form.makeup_type === "concealer";
-
-  const handleCategoryChange = (v: string) => {
-    setForm((f) => ({ ...f, category: v, tryon_mode: defaultTryonMode(v) }));
-  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -131,8 +158,7 @@ export function ProductFormDialog({ userId, onSaved }: ProductFormDialogProps) {
   const handleSave = async () => {
     if (!form.name.trim()) return;
     setSaving(true);
-    const { error } = await supabase.from("products").insert({
-      user_id: userId,
+    const { error } = await supabase.from("products").update({
       name: form.name,
       description: form.description || null,
       category: form.category,
@@ -148,49 +174,38 @@ export function ProductFormDialog({ userId, onSaved }: ProductFormDialogProps) {
       undertone: isFoundation ? form.undertone || null : null,
       finish: isMakeup ? form.finish || null : null,
       intensity: isMakeup ? form.intensity : 80,
-    } as any);
+    } as any).eq("id", product.id);
     if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Produto adicionado!" });
-      setForm({
-        name: "", description: "", category: "tops", sku: "", price: "", image_url: "",
-        tryon_mode: "both", makeup_type: "", color_hex: "", color_rgb: "", color_tone: "",
-        skin_tone: "", undertone: "", finish: "", intensity: 80,
-      });
-      setOpen(false);
+      toast({ title: "Produto atualizado!" });
+      onOpenChange(false);
       onSaved();
     }
     setSaving(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button><Plus className="w-4 h-4" /> Novo Produto</Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Adicionar Produto</DialogTitle>
+          <DialogTitle>Editar Produto</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 mt-4">
-          {/* Name */}
           <div>
             <Label>Nome *</Label>
-            <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Camiseta Preta Básica" />
+            <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
           </div>
 
-          {/* Description */}
           <div>
             <Label>Descrição</Label>
-            <Input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Descrição detalhada para a IA" />
+            <Input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
           </div>
 
-          {/* Category + Price */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Categoria</Label>
-              <Select value={form.category} onValueChange={handleCategoryChange}>
+              <Select value={form.category} onValueChange={(v) => setForm((f) => ({ ...f, category: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {categories.map((c) => (
@@ -201,14 +216,13 @@ export function ProductFormDialog({ userId, onSaved }: ProductFormDialogProps) {
             </div>
             <div>
               <Label>Preço (R$)</Label>
-              <Input type="number" value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} placeholder="99.90" />
+              <Input type="number" value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} />
             </div>
           </div>
 
-          {/* SKU */}
           <div>
             <Label>SKU</Label>
-            <Input value={form.sku} onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} placeholder="SKU-001" />
+            <Input value={form.sku} onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} />
           </div>
 
           {/* Tryon Mode */}
@@ -249,13 +263,7 @@ export function ProductFormDialog({ userId, onSaved }: ProductFormDialogProps) {
                   <Trash2 className="w-3 h-3" />
                 </Button>
                 {isMakeup && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="absolute bottom-2 right-2"
-                    onClick={handleDetectColor}
-                    disabled={detecting}
-                  >
+                  <Button variant="secondary" size="sm" className="absolute bottom-2 right-2" onClick={handleDetectColor} disabled={detecting}>
                     {detecting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Pipette className="w-3 h-3" />}
                     {detecting ? "Detectando..." : "Detectar Cor"}
                   </Button>
@@ -269,7 +277,7 @@ export function ProductFormDialog({ userId, onSaved }: ProductFormDialogProps) {
             )}
           </div>
 
-          {/* Makeup-specific fields */}
+          {/* Makeup fields */}
           {isMakeup && (
             <div className="rounded-xl border border-border p-4 bg-accent/10 space-y-3">
               <Label className="text-sm font-bold block">🎨 Dados de Maquiagem</Label>
@@ -366,7 +374,7 @@ export function ProductFormDialog({ userId, onSaved }: ProductFormDialogProps) {
 
           <Button onClick={handleSave} disabled={saving || !form.name.trim()} className="w-full">
             {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-            Salvar Produto
+            Salvar Alterações
           </Button>
         </div>
       </DialogContent>

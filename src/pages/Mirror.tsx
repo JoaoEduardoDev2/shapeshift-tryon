@@ -1,7 +1,9 @@
 import { useRef, useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Navbar } from "@/components/landing/Navbar";
 import { Button } from "@/components/ui/button";
 import { Camera, CameraOff, FlipHorizontal, Palette, Glasses, Sparkles, Eye, Brush, Crown } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 type ProductCategory = "beauty" | "accessories";
 
@@ -179,6 +181,7 @@ const FACE_OUTLINE = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288,
 type DetectionMode = "loading" | "mediapipe" | "facedetector" | "manual";
 
 export default function Mirror() {
+  const [searchParams] = useSearchParams();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [cameraOn, setCameraOn] = useState(false);
@@ -202,6 +205,26 @@ export default function Mirror() {
   selectedProductRef.current = selectedProduct;
   selectedColorRef.current = selectedColor;
   mirroredRef.current = mirrored;
+
+  // Load product from query param
+  useEffect(() => {
+    const productId = searchParams.get("product");
+    if (!productId) return;
+    supabase.from("products").select("*").eq("id", productId).single().then(({ data }) => {
+      if (!data) return;
+      const p = data as any;
+      // Map makeup_type to local product id and set color
+      if (p.makeup_type && p.color_hex) {
+        setSelectedProduct(p.makeup_type);
+        setSelectedColor(p.color_hex);
+        setActiveTab("beauty");
+      } else if (p.category === "eyewear") {
+        setSelectedProduct("sunglasses");
+        if (p.color_hex) setSelectedColor(p.color_hex);
+        setActiveTab("accessories");
+      }
+    });
+  }, [searchParams]);
 
   const startCamera = useCallback(async () => {
     try {

@@ -61,6 +61,7 @@ export type Database = {
           finish: string | null
           id: string
           image_url: string | null
+          intensity: number
           is_active: boolean | null
           makeup_type: string | null
           name: string
@@ -86,6 +87,7 @@ export type Database = {
           finish?: string | null
           id?: string
           image_url?: string | null
+          intensity?: number
           is_active?: boolean | null
           makeup_type?: string | null
           name: string
@@ -111,6 +113,7 @@ export type Database = {
           finish?: string | null
           id?: string
           image_url?: string | null
+          intensity?: number
           is_active?: boolean | null
           makeup_type?: string | null
           name?: string
