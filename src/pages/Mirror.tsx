@@ -128,6 +128,8 @@ export default function Mirror() {
   const animFrameRef = useRef<number>(0);
   const faceMeshRef = useRef<any>(null);
   const landmarksRef = useRef<any>(null);
+  const processingRef = useRef(false);
+  const detectIntervalRef = useRef<number>(0);
 
   const startCamera = useCallback(async () => {
     try {
@@ -152,6 +154,7 @@ export default function Mirror() {
     setCameraOn(false);
     setDetecting(false);
     cancelAnimationFrame(animFrameRef.current);
+    clearInterval(detectIntervalRef.current);
   }, []);
 
   const loadScript = (src: string): Promise<void> => {
@@ -188,10 +191,26 @@ export default function Mirror() {
       });
       faceMeshRef.current = faceMesh;
       setFaceMeshLoaded(true);
+      startDetectionLoop();
       renderLoop();
     } catch (e) {
       console.error("FaceMesh init error:", e);
     }
+  };
+
+  const startDetectionLoop = () => {
+    // Send frames to FaceMesh at ~15fps, decoupled from render
+    clearInterval(detectIntervalRef.current);
+    detectIntervalRef.current = window.setInterval(() => {
+      const video = videoRef.current;
+      if (!video || video.paused || video.ended || !faceMeshRef.current || processingRef.current) return;
+      processingRef.current = true;
+      faceMeshRef.current.send({ image: video }).then(() => {
+        processingRef.current = false;
+      }).catch(() => {
+        processingRef.current = false;
+      });
+    }, 66);
   };
 
   const renderLoop = () => {
@@ -201,7 +220,7 @@ export default function Mirror() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const draw = async () => {
+    const draw = () => {
       if (!video.paused && !video.ended) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
@@ -209,8 +228,6 @@ export default function Mirror() {
         if (mirrored) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
         ctx.drawImage(video, 0, 0);
         ctx.restore();
-
-        if (faceMeshRef.current) await faceMeshRef.current.send({ image: video });
 
         const landmarks = landmarksRef.current;
         if (landmarks && selectedProduct) {
