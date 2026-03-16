@@ -38,6 +38,8 @@ const App = () => (
             <Route path="/admin/integrations" element={<AdminIntegrations />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/paywall" element={<Paywall />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/look/:id" element={<LookPage />} />
             <Route path="*" element={<NotFound />} />
