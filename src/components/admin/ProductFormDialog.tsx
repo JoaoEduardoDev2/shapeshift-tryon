@@ -77,6 +77,7 @@ export function ProductFormDialog({ userId, onSaved }: ProductFormDialogProps) {
     skin_tone: "",
     undertone: "",
     finish: "",
+    intensity: 80,
   });
 
   const isMakeup = form.category === "makeup";
