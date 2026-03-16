@@ -52,52 +52,76 @@ export type Database = {
       products: {
         Row: {
           category: string
+          color_hex: string | null
+          color_rgb: string | null
+          color_tone: string | null
           colors: string[] | null
           created_at: string
           description: string | null
+          finish: string | null
           id: string
           image_url: string | null
           is_active: boolean | null
+          makeup_type: string | null
           name: string
           price: number | null
           share_count: number | null
           sizes: string[] | null
+          skin_tone: string | null
           sku: string | null
           tryon_count: number | null
+          tryon_mode: string
+          undertone: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           category?: string
+          color_hex?: string | null
+          color_rgb?: string | null
+          color_tone?: string | null
           colors?: string[] | null
           created_at?: string
           description?: string | null
+          finish?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean | null
+          makeup_type?: string | null
           name: string
           price?: number | null
           share_count?: number | null
           sizes?: string[] | null
+          skin_tone?: string | null
           sku?: string | null
           tryon_count?: number | null
+          tryon_mode?: string
+          undertone?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           category?: string
+          color_hex?: string | null
+          color_rgb?: string | null
+          color_tone?: string | null
           colors?: string[] | null
           created_at?: string
           description?: string | null
+          finish?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean | null
+          makeup_type?: string | null
           name?: string
           price?: number | null
           share_count?: number | null
           sizes?: string[] | null
+          skin_tone?: string | null
           sku?: string | null
           tryon_count?: number | null
+          tryon_mode?: string
+          undertone?: string | null
           updated_at?: string
           user_id?: string
         }
