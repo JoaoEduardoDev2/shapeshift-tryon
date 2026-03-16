@@ -14,6 +14,95 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          product_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          product_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          product_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_events_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          category: string
+          colors: string[] | null
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          name: string
+          price: number | null
+          share_count: number | null
+          sizes: string[] | null
+          sku: string | null
+          tryon_count: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          colors?: string[] | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name: string
+          price?: number | null
+          share_count?: number | null
+          sizes?: string[] | null
+          sku?: string | null
+          tryon_count?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          colors?: string[] | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name?: string
+          price?: number | null
+          share_count?: number | null
+          sizes?: string[] | null
+          sku?: string | null
+          tryon_count?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -61,6 +150,48 @@ export type Database = {
           id?: string
           image_base64?: string
           mode?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      store_settings: {
+        Row: {
+          created_at: string
+          domain: string | null
+          id: string
+          logo_url: string | null
+          platform: string | null
+          platform_url: string | null
+          primary_color: string | null
+          store_name: string | null
+          tracking_pixel: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          domain?: string | null
+          id?: string
+          logo_url?: string | null
+          platform?: string | null
+          platform_url?: string | null
+          primary_color?: string | null
+          store_name?: string | null
+          tracking_pixel?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          domain?: string | null
+          id?: string
+          logo_url?: string | null
+          platform?: string | null
+          platform_url?: string | null
+          primary_color?: string | null
+          store_name?: string | null
+          tracking_pixel?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
