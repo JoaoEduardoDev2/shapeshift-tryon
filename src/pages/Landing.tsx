@@ -31,7 +31,7 @@ export default function Landing() {
             Pronto para <span className="text-gradient">começar</span>?
           </h2>
           <p className="text-muted-foreground text-lg mb-8">
-            14 dias grátis. Sem cartão de crédito. Cancele quando quiser.
+            7 dias grátis. Sem cartão de crédito. Cancele quando quiser.
           </p>
           <Link to="/auth">
             <Button variant="hero" size="xl">
