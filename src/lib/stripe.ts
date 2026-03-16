@@ -4,6 +4,7 @@ export const STRIPE_PLANS = {
     price: 99,
     price_id: "price_1TBcZKFIwaU6XMYX9hmONDJx",
     product_id: "prod_U9wSew46rwA9jy",
+    popular: false,
     features: ["50 produtos", "5.000 provas/mês", "Provador por foto", "Analytics básico"],
   },
   growth: {
