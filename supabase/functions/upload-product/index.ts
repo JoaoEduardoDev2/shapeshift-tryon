@@ -20,13 +20,9 @@ serve(async (req) => {
       });
     }
 
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    console.log("Service role key available:", !!serviceRoleKey);
-    console.log("SUPABASE_URL:", Deno.env.get("SUPABASE_URL"));
-
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      serviceRoleKey!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       { auth: { persistSession: false } }
     );
 
