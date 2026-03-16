@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { ProductFormDialog } from "@/components/admin/ProductFormDialog";
 import { ProductCard } from "@/components/admin/ProductCard";
+import { EditProductDialog } from "@/components/admin/EditProductDialog";
 
 interface Product {
   id: string;
@@ -24,6 +25,12 @@ interface Product {
   tryon_mode: string;
   color_hex: string | null;
   makeup_type: string | null;
+  color_rgb: string | null;
+  color_tone: string | null;
+  skin_tone: string | null;
+  undertone: string | null;
+  finish: string | null;
+  intensity: number | null;
   created_at: string;
 }
 
@@ -47,6 +54,7 @@ export default function AdminProducts() {
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [editProduct, setEditProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth");
@@ -99,7 +107,6 @@ export default function AdminProducts() {
         {user && <ProductFormDialog userId={user.id} onSaved={fetchProducts} />}
       </div>
 
-      {/* Filters */}
       <div className="flex gap-3 mb-6">
         <div className="relative flex-1 max-w-xs">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -116,7 +123,6 @@ export default function AdminProducts() {
         </Select>
       </div>
 
-      {/* Products Grid */}
       {filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
           <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -126,9 +132,19 @@ export default function AdminProducts() {
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map((p) => (
-            <ProductCard key={p.id} product={p} onDelete={handleDelete} />
+            <ProductCard key={p.id} product={p} onDelete={handleDelete} onEdit={(prod) => setEditProduct(prod as Product)} />
           ))}
         </div>
+      )}
+
+      {editProduct && user && (
+        <EditProductDialog
+          product={editProduct}
+          userId={user.id}
+          open={!!editProduct}
+          onOpenChange={(open) => { if (!open) setEditProduct(null); }}
+          onSaved={() => { setEditProduct(null); fetchProducts(); }}
+        />
       )}
     </AdminLayout>
   );

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Trash2, Shirt, Camera, Image, RefreshCw } from "lucide-react";
+import { Trash2, Shirt, Camera, Image, RefreshCw, Pencil } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState } from "react";
@@ -26,16 +26,17 @@ const tryonIcons: Record<string, { icon: typeof Camera; label: string }> = {
   both: { icon: RefreshCw, label: "🔄 Ambos" },
 };
 
-export function ProductCard({ product, onDelete }: { product: Product; onDelete: (id: string) => void }) {
+export function ProductCard({ product, onDelete, onEdit }: { product: Product; onDelete: (id: string) => void; onEdit?: (product: Product) => void }) {
   const navigate = useNavigate();
   const [choiceOpen, setChoiceOpen] = useState(false);
   const tryonInfo = tryonIcons[product.tryon_mode] || tryonIcons.both;
 
   const handleTryOn = () => {
+    const params = `?product=${product.id}`;
     if (product.tryon_mode === "photo") {
-      navigate("/photo");
+      navigate(`/photo${params}`);
     } else if (product.tryon_mode === "mirror") {
-      navigate("/mirror");
+      navigate(`/mirror${params}`);
     } else {
       setChoiceOpen(true);
     }
@@ -76,6 +77,11 @@ export function ProductCard({ product, onDelete }: { product: Product; onDelete:
             <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={handleTryOn}>
               Provar
             </Button>
+            {onEdit && (
+              <Button variant="ghost" size="sm" onClick={() => onEdit(product)}>
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+            )}
             <Button variant="ghost" size="sm" onClick={() => onDelete(product.id)}>
               <Trash2 className="w-3.5 h-3.5 text-destructive" />
             </Button>
@@ -83,17 +89,16 @@ export function ProductCard({ product, onDelete }: { product: Product; onDelete:
         </div>
       </div>
 
-      {/* Choice dialog for "both" mode */}
       <Dialog open={choiceOpen} onOpenChange={setChoiceOpen}>
         <DialogContent className="max-w-xs">
           <DialogHeader>
             <DialogTitle>Como deseja provar?</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-3 mt-2">
-            <Button onClick={() => { setChoiceOpen(false); navigate("/photo"); }} className="w-full">
+            <Button onClick={() => { setChoiceOpen(false); navigate(`/photo?product=${product.id}`); }} className="w-full">
               <Image className="w-4 h-4" /> Provar com Foto
             </Button>
-            <Button variant="outline" onClick={() => { setChoiceOpen(false); navigate("/mirror"); }} className="w-full">
+            <Button variant="outline" onClick={() => { setChoiceOpen(false); navigate(`/mirror?product=${product.id}`); }} className="w-full">
               <Camera className="w-4 h-4" /> Provar com Câmera
             </Button>
           </div>
