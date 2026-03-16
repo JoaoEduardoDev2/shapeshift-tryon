@@ -1,10 +1,12 @@
 import { useState, useRef, useCallback } from "react";
 import { Navbar } from "@/components/landing/Navbar";
 import { Button } from "@/components/ui/button";
-import { Upload, ImagePlus, Loader2, Scan, Shirt, Sparkles, AlertCircle } from "lucide-react";
+import { Upload, ImagePlus, Loader2, Scan, Shirt, Sparkles, AlertCircle, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { SharePanel } from "@/components/SharePanel";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
+import { useAuth } from "@/hooks/useAuth";
 
 import blackTshirt from "@/assets/garments/black-tshirt.png";
 import whiteTshirt from "@/assets/garments/white-tshirt.png";
