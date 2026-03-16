@@ -93,10 +93,32 @@ export default function AdminIntegrations() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { limits, loading: planLoading } = usePlanLimits();
   const [copied, setCopied] = useState(false);
   const [activePlatform, setActivePlatform] = useState<string | null>(null);
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [importing, setImporting] = useState(false);
+
+  useEffect(() => {
+    if (!loading && !user) navigate("/auth");
+  }, [user, loading, navigate]);
+
+  if (!planLoading && !limits.hasFullIntegrations) {
+    return (
+      <AdminLayout>
+        <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
+          <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-6">
+            <Lock className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h1 className="text-2xl font-black mb-2">Integrações Completas</h1>
+          <p className="text-muted-foreground max-w-md mb-6">
+            As integrações com plataformas de e-commerce estão disponíveis a partir do plano <strong>Pro</strong>.
+          </p>
+          <Button onClick={() => navigate("/paywall")}>Fazer Upgrade</Button>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth");
