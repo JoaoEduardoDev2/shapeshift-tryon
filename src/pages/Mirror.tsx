@@ -284,7 +284,7 @@ export default function Mirror() {
     [LEFT_CHEEK_CENTER, RIGHT_CHEEK_CENTER].forEach((idx) => {
       const x = lm[idx].x * w, y = lm[idx].y * h;
       const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
-      grad.addColorStop(0, selectedColor);
+      grad.addColorStop(0, color);
       grad.addColorStop(1, "transparent");
       ctx.fillStyle = grad;
       ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
