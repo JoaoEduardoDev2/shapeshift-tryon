@@ -27,6 +27,7 @@ export function Navbar() {
           )}
           <Link to="/mirror" className="hover:text-foreground transition-colors">Espelho</Link>
           <Link to="/photo" className="hover:text-foreground transition-colors">Foto</Link>
+          {isHome && <a href="#pricing" className="hover:text-foreground transition-colors">Planos</a>}
           <Link to="/admin" className="hover:text-foreground transition-colors">Admin</Link>
         </div>
 
