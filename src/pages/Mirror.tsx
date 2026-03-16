@@ -391,7 +391,7 @@ export default function Mirror() {
     ctx.globalAlpha = 1;
   };
 
-  const drawEarrings = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number) => {
+  const drawEarrings = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number, color: string) => {
     // Ear tragion approximate landmarks
     const leftEar = { x: lm[234].x * w, y: lm[234].y * h };
     const rightEar = { x: lm[454].x * w, y: lm[454].y * h };
