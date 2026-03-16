@@ -1,7 +1,7 @@
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Check, Copy, ExternalLink, Loader2, ShoppingBag } from "lucide-react";
+import { Check, Copy, ExternalLink, Loader2, ShoppingBag, X } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,19 +10,19 @@ import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 const platforms = [
-  { name: "Shopify", logo: "🟢", status: "available", region: "Global" },
-  { name: "WooCommerce", logo: "🟣", status: "available", region: "Global" },
-  { name: "Magento", logo: "🟠", status: "available", region: "Global" },
-  { name: "VTEX", logo: "🔴", status: "available", region: "Global" },
-  { name: "BigCommerce", logo: "🔵", status: "coming", region: "Global" },
-  { name: "Wix", logo: "⚫", status: "coming", region: "Global" },
-  { name: "Squarespace", logo: "⬛", status: "coming", region: "Global" },
-  { name: "Nuvemshop", logo: "💙", status: "available", region: "Brasil" },
-  { name: "Tray", logo: "🧡", status: "available", region: "Brasil" },
-  { name: "Loja Integrada", logo: "💚", status: "coming", region: "Brasil" },
-  { name: "Yampi", logo: "💜", status: "coming", region: "Brasil" },
-  { name: "Cartpanda", logo: "🐼", status: "coming", region: "Brasil" },
-  { name: "Bagy", logo: "🛍️", status: "coming", region: "Brasil" },
+  { name: "Shopify", logo: "🟢", status: "available", region: "Global", key: "shopify" },
+  { name: "WooCommerce", logo: "🟣", status: "available", region: "Global", key: "woocommerce" },
+  { name: "Magento", logo: "🟠", status: "available", region: "Global", key: "magento" },
+  { name: "VTEX", logo: "🔴", status: "available", region: "Global", key: "vtex" },
+  { name: "BigCommerce", logo: "🔵", status: "coming", region: "Global", key: "bigcommerce" },
+  { name: "Wix", logo: "⚫", status: "coming", region: "Global", key: "wix" },
+  { name: "Squarespace", logo: "⬛", status: "coming", region: "Global", key: "squarespace" },
+  { name: "Nuvemshop", logo: "💙", status: "available", region: "Brasil", key: "nuvemshop" },
+  { name: "Tray", logo: "🧡", status: "available", region: "Brasil", key: "tray" },
+  { name: "Loja Integrada", logo: "💚", status: "coming", region: "Brasil", key: "lojaintegrada" },
+  { name: "Yampi", logo: "💜", status: "coming", region: "Brasil", key: "yampi" },
+  { name: "Cartpanda", logo: "🐼", status: "coming", region: "Brasil", key: "cartpanda" },
+  { name: "Bagy", logo: "🛍️", status: "coming", region: "Brasil", key: "bagy" },
 ];
 
 const socialCommerce = [
@@ -32,16 +32,42 @@ const socialCommerce = [
   { name: "Pinterest Shopping", logo: "📌", status: "coming" },
 ];
 
+type ActivePlatform = "shopify" | "nuvemshop" | "tray" | null;
+
+const platformForms: Record<string, { fields: { key: string; label: string; placeholder: string; type?: string; hint?: string }[]; functionName: string; bodyMapper: (vals: Record<string, string>) => Record<string, string> }> = {
+  shopify: {
+    fields: [
+      { key: "store_url", label: "URL da loja", placeholder: "minha-loja.myshopify.com" },
+      { key: "api_key", label: "Admin API Access Token", placeholder: "shpat_xxxxxxxxxxxxxxxxxxxxxxxx", type: "password", hint: "Shopify Admin → Settings → Apps → Develop apps → Admin API access token" },
+    ],
+    functionName: "shopify-import",
+    bodyMapper: (v) => v,
+  },
+  nuvemshop: {
+    fields: [
+      { key: "store_id", label: "Store ID", placeholder: "1234567", hint: "Encontre em Nuvemshop Admin → Configurações → Dados da loja ou na URL do painel" },
+      { key: "access_token", label: "Access Token", placeholder: "xxxxxxxxxxxxxxxxxxxxxxxx", type: "password", hint: "Gerado ao criar um app em partners.nuvemshop.com.br" },
+    ],
+    functionName: "nuvemshop-import",
+    bodyMapper: (v) => v,
+  },
+  tray: {
+    fields: [
+      { key: "api_url", label: "URL da API Tray", placeholder: "https://minha-loja.commercesuite.com.br/web_api", hint: "Encontre em Tray Admin → Integrações → API" },
+      { key: "access_token", label: "Access Token", placeholder: "xxxxxxxxxxxxxxxxxxxxxxxx", type: "password", hint: "Gerado pela autenticação OAuth da Tray" },
+    ],
+    functionName: "tray-import",
+    bodyMapper: (v) => v,
+  },
+};
+
 export default function AdminIntegrations() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
-
-  // Shopify import state
-  const [showShopify, setShowShopify] = useState(false);
-  const [shopifyUrl, setShopifyUrl] = useState("");
-  const [shopifyKey, setShopifyKey] = useState("");
+  const [activePlatform, setActivePlatform] = useState<ActivePlatform>(null);
+  const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [importing, setImporting] = useState(false);
 
   useEffect(() => {
@@ -65,9 +91,12 @@ export default function AdminIntegrations() {
     toast({ title: "Script copiado!" });
   };
 
-  const handleShopifyImport = async () => {
-    if (!shopifyUrl.trim() || !shopifyKey.trim()) {
-      toast({ title: "Preencha a URL e a API Key", variant: "destructive" });
+  const handleImport = async () => {
+    if (!activePlatform) return;
+    const config = platformForms[activePlatform];
+    const missing = config.fields.some((f) => !formValues[f.key]?.trim());
+    if (missing) {
+      toast({ title: "Preencha todos os campos", variant: "destructive" });
       return;
     }
 
@@ -77,28 +106,17 @@ export default function AdminIntegrations() {
       const token = sessionData.session?.access_token;
 
       const res = await fetch(
-        `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/shopify-import`,
+        `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/${config.functionName}`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            store_url: shopifyUrl,
-            api_key: shopifyKey,
-          }),
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(config.bodyMapper(formValues)),
         }
       );
 
       const result = await res.json();
-
       if (!res.ok) {
-        toast({
-          title: "Erro ao importar",
-          description: result.error || "Verifique a URL e API Key",
-          variant: "destructive",
-        });
+        toast({ title: "Erro ao importar", description: result.error || "Verifique as credenciais", variant: "destructive" });
         return;
       }
 
@@ -106,70 +124,65 @@ export default function AdminIntegrations() {
         title: "Importação concluída!",
         description: `${result.imported} produtos importados, ${result.skipped} ignorados (de ${result.total} total)`,
       });
-      setShowShopify(false);
-      setShopifyUrl("");
-      setShopifyKey("");
-    } catch (err) {
+      setActivePlatform(null);
+      setFormValues({});
+    } catch {
       toast({ title: "Erro de conexão", variant: "destructive" });
     } finally {
       setImporting(false);
     }
   };
 
-  const handlePlatformClick = (name: string) => {
-    if (name === "Shopify") {
-      setShowShopify(true);
+  const handlePlatformClick = (key: string) => {
+    if (platformForms[key]) {
+      setActivePlatform(key as ActivePlatform);
+      setFormValues({});
     } else {
-      toast({ title: `Integração ${name} em breve!` });
+      toast({ title: `Integração em breve!` });
     }
   };
+
+  const activeName = platforms.find((p) => p.key === activePlatform)?.name;
 
   return (
     <AdminLayout>
       <h1 className="text-3xl font-black mb-1">Integrações</h1>
       <p className="text-muted-foreground mb-8">Conecte sua loja e instale o provador virtual</p>
 
-      {/* Shopify Import Modal */}
-      {showShopify && (
+      {/* Platform Import Form */}
+      {activePlatform && platformForms[activePlatform] && (
         <div className="rounded-2xl border-2 border-primary/30 bg-card overflow-hidden mb-8 animate-in fade-in slide-in-from-top-2">
-          <div className="p-6 border-b border-border flex items-center gap-3">
-            <ShoppingBag className="w-5 h-5 text-primary" />
-            <div>
-              <h3 className="font-bold">Conectar Shopify</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Insira a URL da sua loja e o Access Token da Admin API
-              </p>
+          <div className="p-6 border-b border-border flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <ShoppingBag className="w-5 h-5 text-primary" />
+              <div>
+                <h3 className="font-bold">Conectar {activeName}</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Preencha as credenciais para importar produtos</p>
+              </div>
             </div>
+            <Button variant="ghost" size="sm" onClick={() => setActivePlatform(null)}>
+              <X className="w-4 h-4" />
+            </Button>
           </div>
           <div className="p-6 space-y-4">
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">URL da loja</label>
-              <Input
-                placeholder="minha-loja.myshopify.com"
-                value={shopifyUrl}
-                onChange={(e) => setShopifyUrl(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">Admin API Access Token</label>
-              <Input
-                type="password"
-                placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxx"
-                value={shopifyKey}
-                onChange={(e) => setShopifyKey(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Encontre em Shopify Admin → Settings → Apps → Develop apps → Admin API access token
-              </p>
-            </div>
+            {platformForms[activePlatform].fields.map((field) => (
+              <div key={field.key}>
+                <label className="text-sm font-medium mb-1.5 block">{field.label}</label>
+                <Input
+                  type={field.type || "text"}
+                  placeholder={field.placeholder}
+                  value={formValues[field.key] || ""}
+                  onChange={(e) => setFormValues((v) => ({ ...v, [field.key]: e.target.value }))}
+                />
+                {field.hint && <p className="text-xs text-muted-foreground mt-1">{field.hint}</p>}
+              </div>
+            ))}
             <div className="flex gap-2 pt-2">
-              <Button onClick={handleShopifyImport} disabled={importing}>
+              <Button onClick={handleImport} disabled={importing}>
                 {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingBag className="w-4 h-4" />}
                 {importing ? "Importando..." : "Importar Produtos"}
               </Button>
-              <Button variant="outline" onClick={() => setShowShopify(false)}>
-                Cancelar
-              </Button>
+              <Button variant="outline" onClick={() => setActivePlatform(null)}>Cancelar</Button>
             </div>
           </div>
         </div>
@@ -180,9 +193,7 @@ export default function AdminIntegrations() {
         <div className="p-6 border-b border-border flex items-center justify-between">
           <div>
             <h3 className="font-bold">Script de Instalação</h3>
-            <p className="text-xs text-muted-foreground mt-1">
-              Cole no HTML do seu site para adicionar o botão "Provar Agora" automaticamente
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Cole no HTML do seu site para adicionar o botão "Provar Agora" automaticamente</p>
           </div>
           <Button variant="outline" size="sm" onClick={copyScript}>
             {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
@@ -208,7 +219,7 @@ export default function AdminIntegrations() {
                 </div>
               </div>
               {p.status === "available" ? (
-                <Button size="sm" variant="outline" onClick={() => handlePlatformClick(p.name)}>
+                <Button size="sm" variant={activePlatform === p.key ? "default" : "outline"} onClick={() => handlePlatformClick(p.key)}>
                   <ExternalLink className="w-3 h-3" />
                   Conectar
                 </Button>
