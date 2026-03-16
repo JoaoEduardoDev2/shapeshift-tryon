@@ -126,6 +126,14 @@ export default function PhotoTryOn() {
         setResultImage(data.image);
         setProcessingStep("");
         toast({ title: "Prova virtual concluída!", description: `${garment.name} aplicada com sucesso.` });
+        // Track tryon event
+        if (user) {
+          await supabase.from("analytics_events").insert({
+            user_id: user.id,
+            event_type: "tryon",
+            metadata: { garment_name: garment.name, mode: "photo" },
+          });
+        }
       } else {
         throw new Error("A IA não gerou uma imagem. Tente novamente.");
       }

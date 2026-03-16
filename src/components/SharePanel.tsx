@@ -21,6 +21,25 @@ export function SharePanel({ imageBase64, garmentName, garmentDescription, mode 
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { limits } = usePlanLimits();
+  const canShare = limits.hasSharing;
+
+  if (!canShare) {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
+        <h3 className="font-bold text-sm flex items-center gap-2">
+          <Lock className="w-4 h-4 text-muted-foreground" />
+          Compartilhamento Social
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          Disponível a partir do plano <strong>Growth</strong>. Faça upgrade para compartilhar seus looks.
+        </p>
+        <Button variant="outline" size="sm" onClick={() => navigate("/paywall")} className="w-full text-xs">
+          Fazer Upgrade
+        </Button>
+      </div>
+    );
+  }
 
   const downloadImage = () => {
     const link = document.createElement("a");
