@@ -320,6 +320,19 @@ export function ProductFormDialog({ userId, onSaved }: ProductFormDialogProps) {
                 </div>
               </div>
 
+              {/* Intensity slider */}
+              <div>
+                <Label className="text-xs">Intensidade: {form.intensity}%</Label>
+                <Slider
+                  value={[form.intensity]}
+                  onValueChange={([v]) => setForm((f) => ({ ...f, intensity: v }))}
+                  min={10}
+                  max={100}
+                  step={5}
+                  className="mt-2"
+                />
+              </div>
+
               {/* Foundation-specific */}
               {isFoundation && (
                 <div className="grid grid-cols-2 gap-3">
