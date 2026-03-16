@@ -232,25 +232,28 @@ export default function Mirror() {
       if (!video.paused && !video.ended) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
+        const isMirrored = mirroredRef.current;
         ctx.save();
-        if (mirrored) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
+        if (isMirrored) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
         ctx.drawImage(video, 0, 0);
         ctx.restore();
 
         const landmarks = landmarksRef.current;
-        if (landmarks && selectedProduct) {
+        const product = selectedProductRef.current;
+        const color = selectedColorRef.current;
+        if (landmarks && product) {
           ctx.save();
-          if (mirrored) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
+          if (isMirrored) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
           const w = canvas.width, h = canvas.height;
 
-          switch (selectedProduct) {
-            case "lipstick": drawLipstick(ctx, landmarks, w, h); break;
-            case "blush": drawBlush(ctx, landmarks, w, h); break;
-            case "eyeshadow": drawEyeshadow(ctx, landmarks, w, h); break;
-            case "eyeliner": drawEyeliner(ctx, landmarks, w, h); break;
-            case "foundation": drawFoundation(ctx, landmarks, w, h); break;
-            case "sunglasses": drawSunglasses(ctx, landmarks, w, h); break;
-            case "earrings": drawEarrings(ctx, landmarks, w, h); break;
+          switch (product) {
+            case "lipstick": drawLipstick(ctx, landmarks, w, h, color); break;
+            case "blush": drawBlush(ctx, landmarks, w, h, color); break;
+            case "eyeshadow": drawEyeshadow(ctx, landmarks, w, h, color); break;
+            case "eyeliner": drawEyeliner(ctx, landmarks, w, h, color); break;
+            case "foundation": drawFoundation(ctx, landmarks, w, h, color); break;
+            case "sunglasses": drawSunglasses(ctx, landmarks, w, h, color); break;
+            case "earrings": drawEarrings(ctx, landmarks, w, h, color); break;
           }
           ctx.restore();
         }
