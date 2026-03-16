@@ -5,6 +5,7 @@ import { Package, Eye, TrendingUp, Share2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { TrialBanner } from "@/components/TrialBanner";
 
 const mockWeekly = [
   { day: "Seg", provas: 1240 },
@@ -86,7 +87,11 @@ export default function AdminDashboard() {
       <h1 className="text-3xl font-black mb-1">
         Dashboard
       </h1>
-      <p className="text-muted-foreground mb-8">Visão geral da sua loja virtual</p>
+      <p className="text-muted-foreground mb-6">Visão geral da sua loja virtual</p>
+
+      <div className="mb-6">
+        <TrialBanner />
+      </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
