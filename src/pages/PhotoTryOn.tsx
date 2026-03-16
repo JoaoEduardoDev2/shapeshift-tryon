@@ -17,6 +17,12 @@ import navyPolo from "@/assets/garments/navy-polo.png";
 import blackBlazer from "@/assets/garments/black-blazer.png";
 import greenBomber from "@/assets/garments/green-bomber.png";
 import floralDress from "@/assets/garments/floral-dress.png";
+import khakiChinos from "@/assets/garments/khaki-chinos.png";
+import stripedBreton from "@/assets/garments/striped-breton.png";
+import pinkBlouse from "@/assets/garments/pink-blouse.png";
+import leatherJacket from "@/assets/garments/leather-jacket.png";
+import whiteCargo from "@/assets/garments/white-cargo.png";
+import greenGown from "@/assets/garments/green-gown.png";
 
 type GarmentCategory = "tops" | "bottoms" | "outerwear" | "dresses";
 
@@ -34,17 +40,23 @@ const garments: Garment[] = [
   { id: 1, name: "Camiseta Branca", description: "A plain white crew neck cotton t-shirt, casual fit, short sleeves", image: whiteTshirt, category: "tops" },
   { id: 4, name: "Polo Azul Marinho", description: "A classic navy blue polo shirt with collar and buttons, slim fit", image: navyPolo, category: "tops" },
   { id: 7, name: "Hoodie Cinza", description: "A comfortable gray hoodie sweatshirt with kangaroo pocket, relaxed fit", image: grayHoodie, category: "tops" },
+  { id: 12, name: "Blusa Listrada", description: "A navy and white striped breton long-sleeve top, classic French style", image: stripedBreton, category: "tops" },
+  { id: 13, name: "Blusa Rosa", description: "A pink linen blouse with bow detail and ruffled sleeves, feminine cut", image: pinkBlouse, category: "tops" },
   // Bottoms
   { id: 5, name: "Calça Jeans", description: "Classic blue straight-fit denim jeans pants", image: blueJeans, category: "bottoms" },
   { id: 6, name: "Saia Preta", description: "An elegant black pleated midi skirt, flowing fabric", image: blackSkirt, category: "bottoms" },
+  { id: 14, name: "Chino Khaki", description: "Khaki beige chino pants, slim fit, casual smart style", image: khakiChinos, category: "bottoms" },
+  { id: 15, name: "Cargo Branca", description: "White cargo pants with side pockets, relaxed streetwear fit", image: whiteCargo, category: "bottoms" },
   // Outerwear
   { id: 2, name: "Jaqueta Jeans", description: "A classic blue denim jacket with metal buttons, collar, and front pockets", image: denimJacket, category: "outerwear" },
   { id: 8, name: "Blazer Preto", description: "A tailored black formal blazer jacket, slim fit, single button", image: blackBlazer, category: "outerwear" },
   { id: 9, name: "Bomber Verde", description: "A military green bomber jacket with zipper and ribbed cuffs", image: greenBomber, category: "outerwear" },
   { id: 10, name: "Trench Coat Bege", description: "A classic beige trench coat, long, double-breasted with belt", image: beigeCoat, category: "outerwear" },
+  { id: 16, name: "Jaqueta de Couro", description: "A camel brown leather biker jacket with asymmetric zipper and metal details", image: leatherJacket, category: "outerwear" },
   // Dresses
   { id: 3, name: "Vestido Vermelho", description: "An elegant red midi cocktail dress with spaghetti straps and flowing fabric", image: redDress, category: "dresses" },
   { id: 11, name: "Vestido Floral", description: "A light colorful floral summer dress, sleeveless, A-line silhouette", image: floralDress, category: "dresses" },
+  { id: 17, name: "Vestido Esmeralda", description: "An elegant emerald green sleeveless evening gown with cinched waist and flowing skirt", image: greenGown, category: "dresses" },
 ];
 
 const categoryLabels: Record<GarmentCategory, string> = {
