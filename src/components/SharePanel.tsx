@@ -104,7 +104,7 @@ export function SharePanel({ imageBase64, garmentName, garmentDescription, mode 
               className="flex-1 text-xs bg-secondary rounded-lg px-3 py-2 text-muted-foreground truncate border-none outline-none"
             />
             <Button variant="ghost" size="sm" onClick={copyLink}>
-              {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? <Check className="w-3.5 h-3.5 text-primary" /> : <Copy className="w-3.5 h-3.5" />}
             </Button>
           </div>
 
