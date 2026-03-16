@@ -101,6 +101,10 @@ export default function PhotoTryOn() {
 
   const applyGarment = async (garmentId: number) => {
     if (!userImage) return;
+    if (user && !canDoTryon) {
+      toast({ title: "Limite de provas atingido", description: `Seu plano permite ${limits.maxTryonsPerMonth.toLocaleString()} provas/mês. Faça upgrade para continuar.`, variant: "destructive" });
+      return;
+    }
     setSelectedGarment(garmentId);
     setProcessing(true);
     setError(null);
