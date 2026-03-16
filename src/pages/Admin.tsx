@@ -5,6 +5,7 @@ import { Package, Eye, TrendingUp, Share2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { TrialBanner } from "@/components/TrialBanner";
 
 const mockWeekly = [
   { day: "Seg", provas: 1240 },
