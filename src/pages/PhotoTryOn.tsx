@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Upload, ImagePlus, Loader2, Scan, Shirt, Sparkles, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { SharePanel } from "@/components/SharePanel";
 
 import blackTshirt from "@/assets/garments/black-tshirt.png";
 import whiteTshirt from "@/assets/garments/white-tshirt.png";
