@@ -105,22 +105,46 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_type: string | null
           avatar_url: string | null
+          cnpj: string | null
+          company_name: string | null
+          cpf: string | null
           created_at: string
           full_name: string | null
           id: string
+          phone: string | null
+          profession: string | null
+          segment: string | null
+          store_name: string | null
         }
         Insert: {
+          account_type?: string | null
           avatar_url?: string | null
+          cnpj?: string | null
+          company_name?: string | null
+          cpf?: string | null
           created_at?: string
           full_name?: string | null
           id: string
+          phone?: string | null
+          profession?: string | null
+          segment?: string | null
+          store_name?: string | null
         }
         Update: {
+          account_type?: string | null
           avatar_url?: string | null
+          cnpj?: string | null
+          company_name?: string | null
+          cpf?: string | null
           created_at?: string
           full_name?: string | null
           id?: string
+          phone?: string | null
+          profession?: string | null
+          segment?: string | null
+          store_name?: string | null
         }
         Relationships: []
       }
@@ -191,6 +215,42 @@ export type Database = {
           primary_color?: string | null
           store_name?: string | null
           tracking_pixel?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          created_at: string
+          id: string
+          payment_provider: string | null
+          plan: string
+          subscription_status: string
+          trial_end: string
+          trial_start: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          payment_provider?: string | null
+          plan?: string
+          subscription_status?: string
+          trial_end?: string
+          trial_start?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          payment_provider?: string | null
+          plan?: string
+          subscription_status?: string
+          trial_end?: string
+          trial_start?: string
           updated_at?: string
           user_id?: string
         }
