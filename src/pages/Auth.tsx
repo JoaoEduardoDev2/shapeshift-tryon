@@ -84,13 +84,7 @@ export default function Auth() {
                 </button>
               </form>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {!isLogin && (
-                  <div>
-                    <Label htmlFor="name">Nome</Label>
-                    <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-                  </div>
-                )}
+              <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <Label htmlFor="email">Email</Label>
                   <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -99,23 +93,21 @@ export default function Auth() {
                   <Label htmlFor="password">Senha</Label>
                   <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
                 </div>
-                {isLogin && (
-                  <button type="button" onClick={() => setShowForgot(true)} className="text-xs text-muted-foreground hover:text-foreground">
-                    Esqueceu a senha?
-                  </button>
-                )}
+                <button type="button" onClick={() => setShowForgot(true)} className="text-xs text-muted-foreground hover:text-foreground">
+                  Esqueceu a senha?
+                </button>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {isLogin ? "Entrar" : "Criar Conta"}
+                  Entrar
                 </Button>
               </form>
             )}
 
             {!showForgot && (
               <p className="text-sm text-muted-foreground text-center mt-4">
-                {isLogin ? "Não tem conta?" : "Já tem conta?"}{" "}
-                <button onClick={() => setIsLogin(!isLogin)} className="text-primary hover:underline font-medium">
-                  {isLogin ? "Criar agora" : "Fazer login"}
+                Não tem conta?{" "}
+                <button onClick={() => navigate("/onboarding")} className="text-primary hover:underline font-medium">
+                  Criar agora
                 </button>
               </p>
             )}
