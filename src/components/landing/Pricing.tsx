@@ -53,7 +53,7 @@ const plans: Plan[] = [
   },
   {
     name: "Pro",
-    price: "$299",
+    price: "R$499,90",
     period: "/mês",
     description: "Para operações profissionais de e-commerce",
     icon: Crown,
