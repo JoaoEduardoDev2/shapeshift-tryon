@@ -156,7 +156,7 @@ export function ProductFormDialog({ userId, onSaved }: ProductFormDialogProps) {
       setForm({
         name: "", description: "", category: "tops", sku: "", price: "", image_url: "",
         tryon_mode: "both", makeup_type: "", color_hex: "", color_rgb: "", color_tone: "",
-        skin_tone: "", undertone: "", finish: "",
+        skin_tone: "", undertone: "", finish: "", intensity: 80,
       });
       setOpen(false);
       onSaved();
