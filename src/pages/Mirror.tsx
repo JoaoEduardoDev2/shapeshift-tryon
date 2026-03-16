@@ -154,11 +154,27 @@ export default function Mirror() {
     cancelAnimationFrame(animFrameRef.current);
   }, []);
 
+  const loadScript = (src: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+      const s = document.createElement("script");
+      s.src = src;
+      s.crossOrigin = "anonymous";
+      s.onload = () => resolve();
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  };
+
   const initFaceMesh = async () => {
     try {
-      const { FaceMesh } = await import("@mediapipe/face_mesh");
-      const faceMesh = new FaceMesh({
-        locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
+      // Load FaceMesh via CDN script to avoid WASM/WebGL bundler issues
+      await loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js");
+      const w = window as any;
+      if (!w.FaceMesh) throw new Error("FaceMesh not loaded from CDN");
+
+      const faceMesh = new w.FaceMesh({
+        locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/${file}`,
       });
       faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.7, minTrackingConfidence: 0.5 });
       faceMesh.onResults((results: any) => {
