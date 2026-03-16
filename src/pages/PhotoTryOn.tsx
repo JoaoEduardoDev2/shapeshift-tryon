@@ -9,33 +9,50 @@ import blackTshirt from "@/assets/garments/black-tshirt.png";
 import whiteTshirt from "@/assets/garments/white-tshirt.png";
 import denimJacket from "@/assets/garments/denim-jacket.png";
 import redDress from "@/assets/garments/red-dress.png";
+import blueJeans from "@/assets/garments/blue-jeans.png";
+import blackSkirt from "@/assets/garments/black-skirt.png";
+import beigeCoat from "@/assets/garments/beige-coat.png";
+import grayHoodie from "@/assets/garments/gray-hoodie.png";
+import navyPolo from "@/assets/garments/navy-polo.png";
+import blackBlazer from "@/assets/garments/black-blazer.png";
+import greenBomber from "@/assets/garments/green-bomber.png";
+import floralDress from "@/assets/garments/floral-dress.png";
 
-const garments = [
-  {
-    id: 0,
-    name: "Camiseta Preta",
-    description: "A plain black crew neck cotton t-shirt, casual fit, short sleeves",
-    image: blackTshirt,
-  },
-  {
-    id: 1,
-    name: "Camiseta Branca",
-    description: "A plain white crew neck cotton t-shirt, casual fit, short sleeves",
-    image: whiteTshirt,
-  },
-  {
-    id: 2,
-    name: "Jaqueta Jeans",
-    description: "A classic blue denim jacket with metal buttons, collar, and front pockets",
-    image: denimJacket,
-  },
-  {
-    id: 3,
-    name: "Vestido Vermelho",
-    description: "An elegant red midi cocktail dress with spaghetti straps and flowing fabric",
-    image: redDress,
-  },
+type GarmentCategory = "tops" | "bottoms" | "outerwear" | "dresses";
+
+interface Garment {
+  id: number;
+  name: string;
+  description: string;
+  image: string;
+  category: GarmentCategory;
+}
+
+const garments: Garment[] = [
+  // Tops
+  { id: 0, name: "Camiseta Preta", description: "A plain black crew neck cotton t-shirt, casual fit, short sleeves", image: blackTshirt, category: "tops" },
+  { id: 1, name: "Camiseta Branca", description: "A plain white crew neck cotton t-shirt, casual fit, short sleeves", image: whiteTshirt, category: "tops" },
+  { id: 4, name: "Polo Azul Marinho", description: "A classic navy blue polo shirt with collar and buttons, slim fit", image: navyPolo, category: "tops" },
+  { id: 7, name: "Hoodie Cinza", description: "A comfortable gray hoodie sweatshirt with kangaroo pocket, relaxed fit", image: grayHoodie, category: "tops" },
+  // Bottoms
+  { id: 5, name: "Calça Jeans", description: "Classic blue straight-fit denim jeans pants", image: blueJeans, category: "bottoms" },
+  { id: 6, name: "Saia Preta", description: "An elegant black pleated midi skirt, flowing fabric", image: blackSkirt, category: "bottoms" },
+  // Outerwear
+  { id: 2, name: "Jaqueta Jeans", description: "A classic blue denim jacket with metal buttons, collar, and front pockets", image: denimJacket, category: "outerwear" },
+  { id: 8, name: "Blazer Preto", description: "A tailored black formal blazer jacket, slim fit, single button", image: blackBlazer, category: "outerwear" },
+  { id: 9, name: "Bomber Verde", description: "A military green bomber jacket with zipper and ribbed cuffs", image: greenBomber, category: "outerwear" },
+  { id: 10, name: "Trench Coat Bege", description: "A classic beige trench coat, long, double-breasted with belt", image: beigeCoat, category: "outerwear" },
+  // Dresses
+  { id: 3, name: "Vestido Vermelho", description: "An elegant red midi cocktail dress with spaghetti straps and flowing fabric", image: redDress, category: "dresses" },
+  { id: 11, name: "Vestido Floral", description: "A light colorful floral summer dress, sleeveless, A-line silhouette", image: floralDress, category: "dresses" },
 ];
+
+const categoryLabels: Record<GarmentCategory, string> = {
+  tops: "Blusas & Camisetas",
+  bottoms: "Calças & Saias",
+  outerwear: "Jaquetas & Casacos",
+  dresses: "Vestidos",
+};
 
 export default function PhotoTryOn() {
   const [userImage, setUserImage] = useState<string | null>(null);
@@ -43,6 +60,7 @@ export default function PhotoTryOn() {
   const [processing, setProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState("");
   const [selectedGarment, setSelectedGarment] = useState<number | null>(null);
+  const [activeCategory, setActiveCategory] = useState<GarmentCategory>("tops");
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -50,17 +68,10 @@ export default function PhotoTryOn() {
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Validate file size (max 4MB for base64 payload)
     if (file.size > 4 * 1024 * 1024) {
-      toast({
-        title: "Arquivo muito grande",
-        description: "Envie uma imagem de até 4MB.",
-        variant: "destructive",
-      });
+      toast({ title: "Arquivo muito grande", description: "Envie uma imagem de até 4MB.", variant: "destructive" });
       return;
     }
-
     const reader = new FileReader();
     reader.onload = (ev) => {
       setUserImage(ev.target?.result as string);
@@ -73,42 +84,27 @@ export default function PhotoTryOn() {
 
   const applyGarment = async (garmentId: number) => {
     if (!userImage) return;
-
     setSelectedGarment(garmentId);
     setProcessing(true);
     setError(null);
     setResultImage(null);
-    const garment = garments[garmentId];
+    const garment = garments.find((g) => g.id === garmentId)!;
 
     try {
       setProcessingStep("Analisando corpo e pose...");
       await new Promise((r) => setTimeout(r, 500));
-
       setProcessingStep("Aplicando roupa com IA...");
 
       const { data, error: fnError } = await supabase.functions.invoke("virtual-tryon", {
-        body: {
-          userImageBase64: userImage,
-          garmentName: garment.name,
-          garmentDescription: garment.description,
-        },
+        body: { userImageBase64: userImage, garmentName: garment.name, garmentDescription: garment.description },
       });
 
-      if (fnError) {
-        throw new Error(fnError.message || "Erro ao processar");
-      }
-
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-
+      if (fnError) throw new Error(fnError.message || "Erro ao processar");
+      if (data?.error) throw new Error(data.error);
       if (data?.image) {
         setResultImage(data.image);
         setProcessingStep("");
-        toast({
-          title: "Prova virtual concluída!",
-          description: `${garment.name} aplicada com sucesso.`,
-        });
+        toast({ title: "Prova virtual concluída!", description: `${garment.name} aplicada com sucesso.` });
       } else {
         throw new Error("A IA não gerou uma imagem. Tente novamente.");
       }
@@ -116,17 +112,14 @@ export default function PhotoTryOn() {
       console.error("Try-on error:", err);
       const msg = err?.message || "Erro desconhecido";
       setError(msg);
-      toast({
-        title: "Erro no provador",
-        description: msg,
-        variant: "destructive",
-      });
+      toast({ title: "Erro no provador", description: msg, variant: "destructive" });
     } finally {
       setProcessing(false);
     }
   };
 
   const displayImage = resultImage || userImage;
+  const filteredGarments = garments.filter((g) => g.category === activeCategory);
 
   return (
     <div className="min-h-screen bg-background">
@@ -136,11 +129,9 @@ export default function PhotoTryOn() {
           <h1 className="text-3xl font-black mb-2">
             Provador por <span className="text-gradient">Foto</span>
           </h1>
-          <p className="text-muted-foreground mb-6">
-            Envie uma foto e a IA aplica a roupa de forma realista
-          </p>
+          <p className="text-muted-foreground mb-6">Envie uma foto e a IA aplica a roupa de forma realista</p>
 
-          <div className="grid lg:grid-cols-[1fr_320px] gap-6">
+          <div className="grid lg:grid-cols-[1fr_360px] gap-6">
             {/* Main area */}
             <div className="relative min-h-[500px] rounded-2xl border border-border bg-card overflow-hidden flex items-center justify-center">
               {!userImage && (
@@ -148,16 +139,8 @@ export default function PhotoTryOn() {
                   <div className="w-24 h-24 rounded-full border-2 border-dashed border-border flex items-center justify-center mx-auto mb-4">
                     <ImagePlus className="w-10 h-10 text-muted-foreground" />
                   </div>
-                  <p className="text-muted-foreground text-sm mb-4">
-                    Envie uma foto de corpo inteiro
-                  </p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageUpload}
-                  />
+                  <p className="text-muted-foreground text-sm mb-4">Envie uma foto de corpo inteiro</p>
+                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                   <Button variant="hero" size="lg" onClick={() => fileInputRef.current?.click()}>
                     <Upload className="w-5 h-5" />
                     Enviar Foto
@@ -166,14 +149,9 @@ export default function PhotoTryOn() {
               )}
 
               {displayImage && (
-                <img
-                  src={displayImage}
-                  alt="Try-on result"
-                  className="max-w-full max-h-[600px] object-contain"
-                />
+                <img src={displayImage} alt="Try-on result" className="max-w-full max-h-[600px] object-contain" />
               )}
 
-              {/* Result badge */}
               {resultImage && (
                 <div className="absolute top-4 left-4 flex items-center gap-2">
                   <span className="text-xs font-mono glass px-3 py-1.5 rounded-full flex items-center gap-1.5">
@@ -198,28 +176,17 @@ export default function PhotoTryOn() {
             </div>
 
             {/* Side panel */}
-            <div className="space-y-6">
+            <div className="space-y-4">
               {userImage && (
                 <>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageUpload}
-                  />
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
+                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                  <Button variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
                     <Upload className="w-4 h-4" />
                     Trocar Foto
                   </Button>
                 </>
               )}
 
-              {/* Error */}
               {error && (
                 <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3">
                   <AlertCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
@@ -227,14 +194,29 @@ export default function PhotoTryOn() {
                 </div>
               )}
 
-              {/* Garments */}
+              {/* Category tabs */}
               <div className="rounded-2xl border border-border bg-card p-5">
-                <h3 className="font-bold mb-4 flex items-center gap-2">
+                <h3 className="font-bold mb-3 flex items-center gap-2">
                   <Shirt className="w-4 h-4 text-primary" />
-                  Selecione uma roupa
+                  Catálogo de Roupas
                 </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {garments.map((g) => (
+                <div className="flex flex-wrap gap-1.5 mb-4">
+                  {(Object.keys(categoryLabels) as GarmentCategory[]).map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setActiveCategory(cat)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                        activeCategory === cat
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {categoryLabels[cat]}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-1">
+                  {filteredGarments.map((g) => (
                     <button
                       key={g.id}
                       onClick={() => applyGarment(g.id)}
@@ -245,11 +227,7 @@ export default function PhotoTryOn() {
                           : "border-border hover:border-primary/20 hover:bg-secondary/50"
                       }`}
                     >
-                      <img
-                        src={g.image}
-                        alt={g.name}
-                        className="w-full aspect-square object-contain mb-2 rounded-lg"
-                      />
+                      <img src={g.image} alt={g.name} className="w-full aspect-square object-contain mb-2 rounded-lg" />
                       <span className="text-xs font-medium">{g.name}</span>
                     </button>
                   ))}
@@ -275,7 +253,6 @@ export default function PhotoTryOn() {
                 </div>
               </div>
 
-              {/* Info */}
               <div className="rounded-2xl border border-primary/10 bg-primary/5 p-4">
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   <Sparkles className="w-3 h-3 text-primary inline mr-1" />
