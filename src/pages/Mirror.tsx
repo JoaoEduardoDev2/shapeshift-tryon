@@ -312,9 +312,9 @@ export default function Mirror() {
     ctx.globalAlpha = 1;
   };
 
-  const drawEyeliner = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number) => {
+  const drawEyeliner = (ctx: CanvasRenderingContext2D, lm: any[], w: number, h: number, color: string) => {
     ctx.globalAlpha = 0.7;
-    ctx.strokeStyle = selectedColor;
+    ctx.strokeStyle = color;
     ctx.lineWidth = Math.max(1.5, w * 0.003);
     ctx.lineCap = "round";
 
