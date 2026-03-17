@@ -542,36 +542,53 @@ export default function Mirror() {
   // ─── Draw functions ───
 
   const drawLipstick = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
-    ctx.globalAlpha = 0.5;
+    if (!isFullFaceMesh(lm)) return;
+
+    ctx.save();
+    ctx.globalAlpha = 0.58;
     ctx.fillStyle = color;
 
-    // Outer lip fill
+    // Outer mouth region
     ctx.beginPath();
-    UPPER_LIP_OUTER.forEach((idx, i) => {
-      const x = lm[idx].x * w, y = lm[idx].y * h;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    traceRegion(ctx, lm, UPPER_LIP_OUTER, w, h);
+    [...LOWER_LIP_OUTER].reverse().forEach((idx) => {
+      ctx.lineTo(lm[idx].x * w, lm[idx].y * h);
     });
-    // Connect to lower lip (reverse direction for solid fill)
+    ctx.closePath();
+
+    // Carve inner mouth opening to avoid painting teeth/tongue
+    ctx.moveTo(lm[UPPER_LIP_INNER[0]].x * w, lm[UPPER_LIP_INNER[0]].y * h);
+    traceRegion(ctx, lm, UPPER_LIP_INNER, w, h);
+    [...LOWER_LIP_INNER].reverse().forEach((idx) => {
+      ctx.lineTo(lm[idx].x * w, lm[idx].y * h);
+    });
+    ctx.closePath();
+    ctx.fill("evenodd");
+
+    // Light glossy pass constrained to lips
+    ctx.globalAlpha = 0.22;
+    const lipCenter = lm[13];
+    const lipGrad = ctx.createRadialGradient(
+      lipCenter.x * w,
+      lipCenter.y * h,
+      0,
+      lipCenter.x * w,
+      lipCenter.y * h,
+      Math.abs(lm[291].x - lm[61].x) * w * 0.65
+    );
+    lipGrad.addColorStop(0, "rgba(255,255,255,0.2)");
+    lipGrad.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = lipGrad;
+
+    ctx.beginPath();
+    traceRegion(ctx, lm, UPPER_LIP_OUTER, w, h);
     [...LOWER_LIP_OUTER].reverse().forEach((idx) => {
       ctx.lineTo(lm[idx].x * w, lm[idx].y * h);
     });
     ctx.closePath();
     ctx.fill();
 
-    // Inner lip for extra saturation
-    ctx.globalAlpha = 0.3;
-    ctx.beginPath();
-    UPPER_LIP_INNER.forEach((idx, i) => {
-      const x = lm[idx].x * w, y = lm[idx].y * h;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
-    [...LOWER_LIP_INNER].reverse().forEach((idx) => {
-      ctx.lineTo(lm[idx].x * w, lm[idx].y * h);
-    });
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.globalAlpha = 1;
+    ctx.restore();
   };
 
   const drawBlush = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
