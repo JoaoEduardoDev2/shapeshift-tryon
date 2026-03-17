@@ -516,8 +516,9 @@ export default function Mirror() {
         const landmarks = landmarksRef.current;
         const product = selectedProductRef.current;
         const color = selectedColorRef.current;
+        const hasFullMesh = isFullFaceMesh(landmarks);
 
-        if (landmarks && product) {
+        if (hasFullMesh && product) {
           ctx.save();
           if (isMirrored) { ctx.translate(w, 0); ctx.scale(-1, 1); }
 
