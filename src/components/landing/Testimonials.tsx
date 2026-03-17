@@ -214,10 +214,10 @@ export function Testimonials() {
           className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-6 text-center"
         >
           {[
-            { value: "500+", label: "Lojas ativas" },
-            { value: "2M+", label: "Provas realizadas" },
-            { value: "4.9/5", label: "Avaliação média" },
-            { value: "−35%", label: "Redução de devoluções" },
+            { end: 500, suffix: "+", label: "Lojas ativas" },
+            { end: 2, suffix: "M+", label: "Provas realizadas" },
+            { end: 4.9, suffix: "/5", label: "Avaliação média", decimals: 1 },
+            { end: 35, prefix: "−", suffix: "%", label: "Redução de devoluções" },
           ].map((stat, i) => (
             <motion.div
               key={stat.label}
