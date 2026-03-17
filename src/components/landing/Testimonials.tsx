@@ -260,9 +260,4 @@ function CountUpStat({ stat, index }: { stat: { end: number; suffix: string; lab
       </p>
       <p className="text-xs text-muted-foreground mt-1.5">{stat.label}</p>
     </motion.div>
-  );
-        </motion.div>
-      </div>
-    </section>
-  );
 }
