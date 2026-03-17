@@ -658,32 +658,37 @@ export default function Mirror() {
   };
 
   const drawEyeliner = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
-    ctx.globalAlpha = 0.8;
+    if (!isFullFaceMesh(lm)) return;
+
+    ctx.globalAlpha = 0.85;
     ctx.strokeStyle = color;
-    ctx.lineWidth = Math.max(1.5, w * 0.0025);
+    ctx.lineWidth = Math.max(1.4, w * 0.0024);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
     [LEFT_EYE_UPPER, RIGHT_EYE_UPPER].forEach((eye, eyeIdx) => {
       const points = eye.map((idx) => ({ x: lm[idx].x * w, y: lm[idx].y * h }));
 
-      // Draw along upper lash line
       ctx.beginPath();
-      points.forEach((p, i) => {
-        i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
-      });
+      points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
       ctx.stroke();
 
-      // Wing flick at outer corner
       const outerIdx = eyeIdx === 0 ? LEFT_EYE_OUTER : RIGHT_EYE_OUTER;
       const outer = { x: lm[outerIdx].x * w, y: lm[outerIdx].y * h };
-      const wingDir = eyeIdx === 0 ? -1 : 1;
+      const prev = points[points.length - 2];
+      const dirX = outer.x - prev.x;
+      const dirY = outer.y - prev.y;
+      const len = Math.hypot(dirX, dirY) || 1;
+      const nx = dirX / len;
+      const ny = dirY / len;
       const wingLen = w * 0.012;
+
       ctx.beginPath();
       ctx.moveTo(outer.x, outer.y);
-      ctx.lineTo(outer.x + wingDir * wingLen, outer.y - wingLen * 0.8);
+      ctx.lineTo(outer.x + nx * wingLen, outer.y + ny * wingLen - wingLen * 0.35);
       ctx.stroke();
     });
+
     ctx.globalAlpha = 1;
   };
 
