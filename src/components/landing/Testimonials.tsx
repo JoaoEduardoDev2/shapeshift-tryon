@@ -94,21 +94,19 @@ function Stars({ count }: { count: number }) {
 }
 
 const cardVariants = {
-  hidden: (i: number) => ({
+  hidden: {
     opacity: 0,
     y: 60,
-    rotateX: 8,
     scale: 0.95,
-  }),
+  },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    rotateX: 0,
     scale: 1,
     transition: {
       delay: i * 0.1,
       duration: 0.6,
-      ease: [0.22, 1, 0.36, 1],
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
     },
   }),
 };
