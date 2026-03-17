@@ -23,6 +23,8 @@ export function TrialBanner() {
       .from("subscriptions")
       .select("*")
       .eq("user_id", user.id)
+      .order("updated_at", { ascending: false })
+      .limit(1)
       .maybeSingle()
       .then(({ data }) => {
         if (data) setSub(data as Subscription);
