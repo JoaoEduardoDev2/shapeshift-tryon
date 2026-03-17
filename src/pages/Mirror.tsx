@@ -369,22 +369,7 @@ export default function Mirror() {
   }, []);
 
   const initDetection = async () => {
-    // Strategy 1: Try Chrome's FaceDetector API
-    if ("FaceDetector" in window) {
-      try {
-        const detector = new (window as any).FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
-        faceDetectorRef.current = detector;
-        setDetectionMode("facedetector");
-        console.log("[Mirror] Using FaceDetector API (native)");
-        startFaceDetectorLoop();
-        startRenderLoop();
-        return;
-      } catch (e) {
-        console.warn("[Mirror] FaceDetector API failed:", e);
-      }
-    }
-
-    // Strategy 2: MediaPipe FaceMesh
+    // Strategy 1 (primary): MediaPipe FaceMesh completo (468+ pontos)
     try {
       await loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js");
       const w = window as any;
@@ -395,20 +380,23 @@ export default function Mirror() {
         faceMesh.setOptions({
           maxNumFaces: 1,
           refineLandmarks: true,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5,
+          minDetectionConfidence: 0.6,
+          minTrackingConfidence: 0.6,
         });
         faceMesh.onResults((results: any) => {
           if (results.multiFaceLandmarks?.length > 0) {
             const raw = results.multiFaceLandmarks[0];
-            landmarksRef.current = smoothLandmarks(raw, prevLandmarksRef.current);
-            prevLandmarksRef.current = landmarksRef.current;
-            setDetecting(true);
-          } else {
-            landmarksRef.current = null;
-            prevLandmarksRef.current = null;
-            setDetecting(false);
+            if (Array.isArray(raw) && raw.length >= 468) {
+              landmarksRef.current = smoothLandmarks(raw, prevLandmarksRef.current);
+              prevLandmarksRef.current = landmarksRef.current;
+              setDetecting(true);
+              return;
+            }
           }
+
+          landmarksRef.current = null;
+          prevLandmarksRef.current = null;
+          setDetecting(false);
         });
 
         const video = videoRef.current;
@@ -416,7 +404,7 @@ export default function Mirror() {
 
         faceDetectorRef.current = faceMesh;
         setDetectionMode("mediapipe");
-        console.log("[Mirror] Using MediaPipe FaceMesh");
+        console.log("[Mirror] Using MediaPipe FaceMesh 468 landmarks");
         startMediaPipeLoop(faceMesh);
         startRenderLoop();
         return;
@@ -425,7 +413,22 @@ export default function Mirror() {
       console.warn("[Mirror] MediaPipe FaceMesh failed:", e);
     }
 
-    // Strategy 3: Manual fallback
+    // Strategy 2: FaceDetector (somente fallback de detecção, sem precisão de malha completa)
+    if ("FaceDetector" in window) {
+      try {
+        const detector = new (window as any).FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
+        faceDetectorRef.current = detector;
+        setDetectionMode("facedetector");
+        console.log("[Mirror] Using FaceDetector API fallback");
+        startFaceDetectorLoop();
+        startRenderLoop();
+        return;
+      } catch (e) {
+        console.warn("[Mirror] FaceDetector API failed:", e);
+      }
+    }
+
+    // Strategy 3: Manual fallback (detecção estimada)
     console.log("[Mirror] Using manual fallback detection");
     setDetectionMode("manual");
     startManualDetection();
