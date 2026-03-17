@@ -219,19 +219,48 @@ export function Testimonials() {
             { end: 4.9, suffix: "/5", label: "Avaliação média", decimals: 1 },
             { end: 35, prefix: "−", suffix: "%", label: "Redução de devoluções" },
           ].map((stat, i) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1, duration: 0.5 }}
-              whileHover={{ scale: 1.05, transition: { duration: 0.2 } }}
-              className="p-5 rounded-2xl border border-border bg-card/60 backdrop-blur-sm hover:border-primary/30 transition-colors"
-            >
-              <p className="text-3xl sm:text-4xl font-black text-gradient">{stat.value}</p>
-              <p className="text-xs text-muted-foreground mt-1.5">{stat.label}</p>
-            </motion.div>
+            <CountUpStat key={stat.label} stat={stat} index={i} />
           ))}
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+function CountUpStat({ stat, index }: { stat: { end: number; suffix: string; label: string; decimals?: number; prefix?: string }; index: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-50px" });
+  const [display, setDisplay] = useState("0");
+
+  useEffect(() => {
+    if (!isInView) return;
+    const controls = animate(0, stat.end, {
+      duration: 1.8,
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+      delay: index * 0.15,
+      onUpdate: (v) => {
+        setDisplay(stat.decimals ? v.toFixed(stat.decimals) : Math.round(v).toString());
+      },
+    });
+    return () => controls.stop();
+  }, [isInView, stat.end, stat.decimals, index]);
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, scale: 0.9 }}
+      whileInView={{ opacity: 1, scale: 1 }}
+      viewport={{ once: true }}
+      transition={{ delay: index * 0.1, duration: 0.5 }}
+      whileHover={{ scale: 1.05, transition: { duration: 0.2 } }}
+      className="p-5 rounded-2xl border border-border bg-card/60 backdrop-blur-sm hover:border-primary/30 transition-colors"
+    >
+      <p className="text-3xl sm:text-4xl font-black text-gradient">
+        {stat.prefix ?? ""}{display}{stat.suffix}
+      </p>
+      <p className="text-xs text-muted-foreground mt-1.5">{stat.label}</p>
+    </motion.div>
+  );
         </motion.div>
       </div>
     </section>
