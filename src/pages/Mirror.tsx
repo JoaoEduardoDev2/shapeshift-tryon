@@ -627,43 +627,34 @@ export default function Mirror() {
   };
 
   const drawEyeshadow = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
-    ctx.globalAlpha = 0.35;
-    ctx.fillStyle = color;
+    if (!isFullFaceMesh(lm)) return;
 
-    // Draw eyeshadow on upper eyelid area
     [
       { upper: LEFT_EYE_UPPER, lower: LEFT_EYE_LOWER },
       { upper: RIGHT_EYE_UPPER, lower: RIGHT_EYE_LOWER },
     ].forEach(({ upper, lower }) => {
+      const upperPts = upper.map((idx) => ({ x: lm[idx].x * w, y: lm[idx].y * h }));
+      const lowerPts = lower.map((idx) => ({ x: lm[idx].x * w, y: lm[idx].y * h }));
+
+      // Apply only inside eyelid polygon (upper + lower contour)
+      ctx.save();
       ctx.beginPath();
-
-      // Upper lid curve - extend upward for shadow area
-      const upperPoints = upper.map((idx) => ({ x: lm[idx].x * w, y: lm[idx].y * h }));
-
-      // Extend the shadow above the eye
-      const eyeHeight = Math.abs(upperPoints[0].y - (lm[lower[4]]?.y ?? upperPoints[0].y) * h) || w * 0.015;
-      const shadowOffset = eyeHeight * 0.8 + w * 0.008;
-
-      upperPoints.forEach((p, i) => {
-        const x = p.x;
-        const y = p.y - shadowOffset * Math.sin((i / (upperPoints.length - 1)) * Math.PI);
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      });
-
-      // Close along the upper eyelid line
-      [...upperPoints].reverse().forEach((p) => ctx.lineTo(p.x, p.y));
+      upperPts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+      [...lowerPts].reverse().forEach((p) => ctx.lineTo(p.x, p.y));
       ctx.closePath();
+      ctx.clip();
 
-      // Gradient fill for more natural look
-      const centerX = upperPoints[Math.floor(upperPoints.length / 2)].x;
-      const centerY = upperPoints[Math.floor(upperPoints.length / 2)].y - shadowOffset * 0.5;
-      const grad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, shadowOffset * 2);
-      grad.addColorStop(0, color);
-      grad.addColorStop(1, color + "20");
+      const center = upperPts[Math.floor(upperPts.length / 2)];
+      const eyeWidth = Math.hypot(upperPts[0].x - upperPts[upperPts.length - 1].x, upperPts[0].y - upperPts[upperPts.length - 1].y);
+      const grad = ctx.createRadialGradient(center.x, center.y, 0, center.x, center.y, eyeWidth * 0.75);
+      grad.addColorStop(0, `${color}E6`);
+      grad.addColorStop(1, `${color}22`);
+
+      ctx.globalAlpha = 0.38;
       ctx.fillStyle = grad;
-      ctx.fill();
+      ctx.fillRect(center.x - eyeWidth, center.y - eyeWidth, eyeWidth * 2, eyeWidth * 2);
+      ctx.restore();
     });
-    ctx.globalAlpha = 1;
   };
 
   const drawEyeliner = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
