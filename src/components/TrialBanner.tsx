@@ -117,23 +117,60 @@ export function useSubscriptionGuard() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { setLoading(false); return; }
-    supabase
-      .from("subscriptions")
-      .select("subscription_status, trial_end")
-      .eq("user_id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!data) { setStatus(null); setLoading(false); return; }
-        const sub = data as { subscription_status: string; trial_end: string };
-        if (sub.subscription_status === "trial") {
-          const expired = new Date(sub.trial_end) < new Date();
-          setStatus(expired ? "expired" : "trial");
-        } else {
-          setStatus(sub.subscription_status);
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    const resolveSubscription = async () => {
+      const { data } = await supabase
+        .from("subscriptions")
+        .select("subscription_status, trial_end")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!data) {
+        const selectedPlan =
+          typeof user.user_metadata?.plan === "string" && user.user_metadata.plan.length > 0
+            ? user.user_metadata.plan
+            : "starter";
+
+        const { data: created } = await supabase
+          .from("subscriptions")
+          .insert({
+            user_id: user.id,
+            plan: selectedPlan,
+            subscription_status: "trial",
+          })
+          .select("subscription_status, trial_end")
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!created) {
+          setStatus(null);
+          setLoading(false);
+          return;
         }
+
+        const expired = new Date(created.trial_end) < new Date();
+        setStatus(expired ? "expired" : "trial");
         setLoading(false);
-      });
+        return;
+      }
+
+      if (data.subscription_status === "trial") {
+        const expired = new Date(data.trial_end) < new Date();
+        setStatus(expired ? "expired" : "trial");
+      } else {
+        setStatus(data.subscription_status);
+      }
+      setLoading(false);
+    };
+
+    resolveSubscription();
   }, [user, authLoading]);
 
   const hasAccess = status === "trial" || status === "active";
