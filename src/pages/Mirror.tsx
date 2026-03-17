@@ -798,50 +798,47 @@ export default function Mirror() {
   };
 
   const drawEarrings = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
-    // Use ear lobe landmarks for proper positioning
+    if (!isFullFaceMesh(lm)) return;
+
     const leftLobe = lm[LEFT_EAR_LOBE];
     const rightLobe = lm[RIGHT_EAR_LOBE];
-
-    // Scale based on face width
     const faceWidth = Math.abs(lm[RIGHT_TRAGUS].x - lm[LEFT_TRAGUS].x) * w;
     const baseRadius = faceWidth * 0.022;
     const dropLength = faceWidth * 0.06;
-
-    ctx.globalAlpha = 0.9;
+    const headAngle = getFaceAngle(lm, w, h) * 0.35;
 
     [
       { x: leftLobe.x * w, y: leftLobe.y * h },
       { x: rightLobe.x * w, y: rightLobe.y * h },
     ].forEach((ear) => {
-      // Stud
-      ctx.beginPath();
-      ctx.arc(ear.x, ear.y, baseRadius, 0, Math.PI * 2);
+      ctx.save();
+      ctx.translate(ear.x, ear.y);
+      ctx.rotate(headAngle);
+      ctx.globalAlpha = 0.9;
       ctx.fillStyle = color;
+
+      ctx.beginPath();
+      ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
       ctx.fill();
 
-      // Drop
       ctx.beginPath();
-      ctx.moveTo(ear.x - baseRadius * 0.3, ear.y + baseRadius);
-      ctx.lineTo(ear.x, ear.y + baseRadius + dropLength);
-      ctx.lineTo(ear.x + baseRadius * 0.3, ear.y + baseRadius);
+      ctx.moveTo(-baseRadius * 0.3, baseRadius);
+      ctx.lineTo(0, baseRadius + dropLength);
+      ctx.lineTo(baseRadius * 0.3, baseRadius);
       ctx.closePath();
       ctx.fill();
 
-      // Bottom gem
       ctx.beginPath();
-      ctx.arc(ear.x, ear.y + baseRadius + dropLength, baseRadius * 0.5, 0, Math.PI * 2);
+      ctx.arc(0, baseRadius + dropLength, baseRadius * 0.5, 0, Math.PI * 2);
       ctx.fill();
 
-      // Highlight
-      ctx.globalAlpha = 0.4;
-      ctx.fillStyle = "#ffffff";
+      ctx.globalAlpha = 0.32;
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
       ctx.beginPath();
-      ctx.arc(ear.x - baseRadius * 0.25, ear.y - baseRadius * 0.25, baseRadius * 0.3, 0, Math.PI * 2);
+      ctx.arc(-baseRadius * 0.25, -baseRadius * 0.25, baseRadius * 0.3, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = color;
-      ctx.globalAlpha = 0.9;
+      ctx.restore();
     });
-    ctx.globalAlpha = 1;
   };
 
   const drawRoundedRect = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
