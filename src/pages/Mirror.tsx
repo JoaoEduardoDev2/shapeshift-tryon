@@ -807,7 +807,7 @@ export default function Mirror() {
     manual: "MODO ESTIMADO",
   };
 
-  if (!planLoading && !limits.hasMirror) {
+  if (false && !planLoading && !limits.hasMirror) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
