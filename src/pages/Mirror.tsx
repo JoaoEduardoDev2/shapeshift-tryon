@@ -693,22 +693,39 @@ export default function Mirror() {
   };
 
   const drawFoundation = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
-    ctx.globalAlpha = 0.12;
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    FACE_OVAL.forEach((idx, i) => {
-      const x = lm[idx].x * w, y = lm[idx].y * h;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
-    ctx.closePath();
-    ctx.fill();
+    if (!isFullFaceMesh(lm)) return;
 
-    // Second pass with blur for smoother look
+    ctx.save();
+    ctx.globalAlpha = 0.14;
+    ctx.fillStyle = color;
+
+    // Face-only mask (with holes on lips and eye openings)
+    ctx.beginPath();
+    traceRegion(ctx, lm, FACE_OVAL, w, h);
+    ctx.closePath();
+
+    ctx.moveTo(lm[UPPER_LIP_OUTER[0]].x * w, lm[UPPER_LIP_OUTER[0]].y * h);
+    traceRegion(ctx, lm, UPPER_LIP_OUTER, w, h);
+    [...LOWER_LIP_OUTER].reverse().forEach((idx) => ctx.lineTo(lm[idx].x * w, lm[idx].y * h));
+    ctx.closePath();
+
+    ctx.moveTo(lm[LEFT_EYE_UPPER[0]].x * w, lm[LEFT_EYE_UPPER[0]].y * h);
+    traceRegion(ctx, lm, LEFT_EYE_UPPER, w, h);
+    [...LEFT_EYE_LOWER].reverse().forEach((idx) => ctx.lineTo(lm[idx].x * w, lm[idx].y * h));
+    ctx.closePath();
+
+    ctx.moveTo(lm[RIGHT_EYE_UPPER[0]].x * w, lm[RIGHT_EYE_UPPER[0]].y * h);
+    traceRegion(ctx, lm, RIGHT_EYE_UPPER, w, h);
+    [...RIGHT_EYE_LOWER].reverse().forEach((idx) => ctx.lineTo(lm[idx].x * w, lm[idx].y * h));
+    ctx.closePath();
+
+    ctx.fill("evenodd");
+
     ctx.globalAlpha = 0.08;
-    ctx.filter = "blur(8px)";
-    ctx.fill();
+    ctx.filter = "blur(6px)";
+    ctx.fill("evenodd");
     ctx.filter = "none";
-    ctx.globalAlpha = 1;
+    ctx.restore();
   };
 
   const drawSunglasses = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
