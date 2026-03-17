@@ -2,13 +2,15 @@ import { useEffect, useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Search, Package } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, Search, Package, CheckSquare, Square, Globe, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { ProductFormDialog } from "@/components/admin/ProductFormDialog";
 import { ImportProductDialog } from "@/components/admin/ImportProductDialog";
+import { BulkImportDialog } from "@/components/admin/BulkImportDialog";
 import { ProductCard } from "@/components/admin/ProductCard";
 import { EditProductDialog } from "@/components/admin/EditProductDialog";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
@@ -36,6 +38,8 @@ interface Product {
   created_at: string;
   original_url: string | null;
   status: string;
+  import_type: string | null;
+  quality_score: string | null;
 }
 
 const categories = [
@@ -63,6 +67,8 @@ export default function AdminProducts() {
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [statusTab, setStatusTab] = useState<StatusTab>("all");
   const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth");
@@ -77,6 +83,7 @@ export default function AdminProducts() {
       .order("created_at", { ascending: false });
     setProducts((data as any as Product[]) || []);
     setLoadingProducts(false);
+    setSelected(new Set());
   };
 
   useEffect(() => {
@@ -109,6 +116,57 @@ export default function AdminProducts() {
     }
   };
 
+  // Bulk actions
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selected.size === filtered.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(filtered.map((p) => p.id)));
+    }
+  };
+
+  const bulkPublish = async () => {
+    if (selected.size === 0) return;
+    setBulkLoading(true);
+    for (const id of selected) {
+      await supabase.from("products").update({ status: "published" } as any).eq("id", id);
+    }
+    toast({ title: `${selected.size} produtos publicados!` });
+    await fetchProducts();
+    setBulkLoading(false);
+  };
+
+  const bulkDelete = async () => {
+    if (selected.size === 0) return;
+    setBulkLoading(true);
+    for (const id of selected) {
+      await supabase.from("products").delete().eq("id", id);
+    }
+    toast({ title: `${selected.size} produtos removidos` });
+    await fetchProducts();
+    setBulkLoading(false);
+  };
+
+  const bulkUnpublish = async () => {
+    if (selected.size === 0) return;
+    setBulkLoading(true);
+    for (const id of selected) {
+      await supabase.from("products").update({ status: "draft" } as any).eq("id", id);
+    }
+    toast({ title: `${selected.size} produtos movidos para rascunho` });
+    await fetchProducts();
+    setBulkLoading(false);
+  };
+
   const filtered = products.filter((p) => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = filterCategory === "all" || p.category === filterCategory;
@@ -137,10 +195,11 @@ export default function AdminProducts() {
           <p className="text-muted-foreground">Gerencie seu catálogo com provador inteligente</p>
         </div>
         {user && (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap justify-end">
             <span className="text-xs text-muted-foreground">
               {products.length}/{limits.maxProducts === Infinity ? "∞" : limits.maxProducts} produtos
             </span>
+            <BulkImportDialog userId={user.id} onSaved={fetchProducts} />
             <ImportProductDialog userId={user.id} onSaved={fetchProducts} canAddProduct={canAddProduct} />
             <ProductFormDialog userId={user.id} onSaved={fetchProducts} canAddProduct={canAddProduct} remainingProducts={remainingProducts} />
           </div>
@@ -169,6 +228,24 @@ export default function AdminProducts() {
         ))}
       </div>
 
+      {/* Bulk action bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 mb-4 rounded-xl bg-primary/5 border border-primary/20 p-3">
+          <span className="text-sm font-medium">{selected.size} selecionado(s)</span>
+          <div className="flex gap-2 ml-auto">
+            <Button size="sm" variant="outline" onClick={bulkPublish} disabled={bulkLoading}>
+              <Globe className="w-3 h-3 mr-1" /> Publicar
+            </Button>
+            <Button size="sm" variant="outline" onClick={bulkUnpublish} disabled={bulkLoading}>
+              Despublicar
+            </Button>
+            <Button size="sm" variant="destructive" onClick={bulkDelete} disabled={bulkLoading}>
+              <Trash2 className="w-3 h-3 mr-1" /> Excluir
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="flex gap-3 mb-6">
         <div className="relative flex-1 max-w-xs">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -183,6 +260,16 @@ export default function AdminProducts() {
             ))}
           </SelectContent>
         </Select>
+        {filtered.length > 0 && (
+          <Button variant="ghost" size="sm" onClick={toggleSelectAll} className="gap-1.5">
+            {selected.size === filtered.length ? (
+              <CheckSquare className="w-4 h-4" />
+            ) : (
+              <Square className="w-4 h-4" />
+            )}
+            {selected.size === filtered.length ? "Desmarcar" : "Selecionar todos"}
+          </Button>
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -200,14 +287,26 @@ export default function AdminProducts() {
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map((p) => (
-            <ProductCard
-              key={p.id}
-              product={p}
-              onDelete={handleDelete}
-              onEdit={(prod) => setEditProduct(prod as Product)}
-              onPublish={handlePublish}
-              onUnpublish={handleUnpublish}
-            />
+            <div key={p.id} className="relative">
+              {/* Selection checkbox */}
+              <button
+                onClick={() => toggleSelect(p.id)}
+                className={`absolute top-2 right-10 z-10 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${
+                  selected.has(p.id)
+                    ? "bg-primary border-primary text-primary-foreground"
+                    : "bg-background/80 border-border hover:border-primary/50"
+                }`}
+              >
+                {selected.has(p.id) && <CheckSquare className="w-3.5 h-3.5" />}
+              </button>
+              <ProductCard
+                product={p}
+                onDelete={handleDelete}
+                onEdit={(prod) => setEditProduct(prod as Product)}
+                onPublish={handlePublish}
+                onUnpublish={handleUnpublish}
+              />
+            </div>
           ))}
         </div>
       )}
