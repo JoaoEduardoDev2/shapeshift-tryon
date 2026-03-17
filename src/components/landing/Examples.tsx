@@ -1,33 +1,38 @@
 import { motion } from "framer-motion";
 import { Shirt, Palette, Glasses, Sparkles } from "lucide-react";
 
+import modaImg from "@/assets/examples/moda-feminina.jpg";
+import maquiagemImg from "@/assets/examples/maquiagem.jpg";
+import oculosImg from "@/assets/examples/oculos.jpg";
+import cabeloImg from "@/assets/examples/cabelo.jpg";
+
 const examples = [
   {
     title: "Moda Feminina",
     description: "Vestidos, blusas e saias se adaptam à pose e iluminação da cliente",
     icon: Shirt,
-    gradient: "from-pink-500/20 to-purple-500/20",
+    image: modaImg,
     tags: ["Vestido", "Blusa", "Saia", "Calça"],
   },
   {
     title: "Maquiagem Virtual",
     description: "Batom, blush, base e sombra aplicados com mapeamento facial em 468 pontos",
     icon: Palette,
-    gradient: "from-rose-500/20 to-orange-500/20",
+    image: maquiagemImg,
     tags: ["Batom", "Blush", "Base", "Sombra"],
   },
   {
     title: "Óculos & Acessórios",
     description: "Óculos, relógios e bonés posicionados com precisão usando landmarks faciais",
     icon: Glasses,
-    gradient: "from-blue-500/20 to-cyan-500/20",
+    image: oculosImg,
     tags: ["Óculos", "Relógio", "Boné", "Brinco"],
   },
   {
     title: "Cabelo & Barba",
     description: "Mudança de cor, estilo e comprimento de cabelo com detecção de contorno",
     icon: Sparkles,
-    gradient: "from-amber-500/20 to-yellow-500/20",
+    image: cabeloImg,
     tags: ["Cabelo", "Barba", "Sobrancelha", "Cílios"],
   },
 ];
@@ -58,12 +63,21 @@ export function Examples() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
+              whileHover={{ y: -4, transition: { duration: 0.25 } }}
               className="group rounded-2xl border border-border bg-card overflow-hidden hover:border-primary/30 transition-all shadow-card hover:shadow-glow"
             >
-              {/* Visual area */}
-              <div className={`h-48 bg-gradient-to-br ${ex.gradient} flex items-center justify-center relative overflow-hidden`}>
-                <div className="absolute inset-0 bg-[linear-gradient(hsl(var(--border)/0.15)_1px,transparent_1px),linear-gradient(90deg,hsl(var(--border)/0.15)_1px,transparent_1px)] bg-[size:24px_24px]" />
-                <ex.icon className="w-16 h-16 text-foreground/20 group-hover:text-foreground/30 transition-colors relative z-10" />
+              {/* Visual area with real image */}
+              <div className="h-56 relative overflow-hidden">
+                <img
+                  src={ex.image}
+                  alt={ex.title}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+                <div className="absolute top-4 left-4 p-2 rounded-xl bg-card/70 backdrop-blur-sm border border-border/50">
+                  <ex.icon className="w-5 h-5 text-primary" />
+                </div>
               </div>
 
               <div className="p-6">
