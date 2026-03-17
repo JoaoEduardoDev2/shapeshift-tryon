@@ -62,6 +62,7 @@ export type Database = {
           finish: string | null
           id: string
           image_url: string | null
+          import_type: string | null
           imported_images: Json | null
           intensity: number
           is_active: boolean | null
@@ -69,6 +70,7 @@ export type Database = {
           name: string
           original_url: string | null
           price: number | null
+          quality_score: string | null
           share_count: number | null
           sizes: string[] | null
           skin_tone: string | null
@@ -93,6 +95,7 @@ export type Database = {
           finish?: string | null
           id?: string
           image_url?: string | null
+          import_type?: string | null
           imported_images?: Json | null
           intensity?: number
           is_active?: boolean | null
@@ -100,6 +103,7 @@ export type Database = {
           name: string
           original_url?: string | null
           price?: number | null
+          quality_score?: string | null
           share_count?: number | null
           sizes?: string[] | null
           skin_tone?: string | null
@@ -124,6 +128,7 @@ export type Database = {
           finish?: string | null
           id?: string
           image_url?: string | null
+          import_type?: string | null
           imported_images?: Json | null
           intensity?: number
           is_active?: boolean | null
@@ -131,6 +136,7 @@ export type Database = {
           name?: string
           original_url?: string | null
           price?: number | null
+          quality_score?: string | null
           share_count?: number | null
           sizes?: string[] | null
           skin_tone?: string | null

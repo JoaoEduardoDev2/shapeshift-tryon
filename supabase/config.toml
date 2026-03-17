@@ -2,3 +2,6 @@ project_id = "fwljmolphkmdeheynoao"
 
 [functions.detect-color]
 verify_jwt = false
+
+[functions.bulk-import]
+verify_jwt = false
