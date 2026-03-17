@@ -1,18 +1,26 @@
 import { motion } from "framer-motion";
-import { Shirt, Palette, Glasses, Sparkles } from "lucide-react";
+import { Shirt, Palette, Glasses, Sparkles, User } from "lucide-react";
 
-import modaImg from "@/assets/examples/moda-feminina.jpg";
+import modaFemImg from "@/assets/examples/moda-feminina.jpg";
+import modaMascImg from "@/assets/examples/moda-masculina.jpg";
 import maquiagemImg from "@/assets/examples/maquiagem.jpg";
 import oculosImg from "@/assets/examples/oculos.jpg";
-import cabeloImg from "@/assets/examples/cabelo.jpg";
+import cabeloBarbaImg from "@/assets/examples/cabelo-barba.jpg";
 
 const examples = [
   {
     title: "Moda Feminina",
     description: "Vestidos, blusas e saias se adaptam à pose e iluminação da cliente",
     icon: Shirt,
-    image: modaImg,
+    image: modaFemImg,
     tags: ["Vestido", "Blusa", "Saia", "Calça"],
+  },
+  {
+    title: "Moda Masculina",
+    description: "Blazers, camisas e calças ajustados com precisão ao corpo do cliente",
+    icon: User,
+    image: modaMascImg,
+    tags: ["Blazer", "Camisa", "Calça", "Jaqueta"],
   },
   {
     title: "Maquiagem Virtual",
@@ -30,9 +38,9 @@ const examples = [
   },
   {
     title: "Cabelo & Barba",
-    description: "Mudança de cor, estilo e comprimento de cabelo com detecção de contorno",
+    description: "Mudança de cor, estilo e comprimento de cabelo e barba com detecção de contorno",
     icon: Sparkles,
-    image: cabeloImg,
+    image: cabeloBarbaImg,
     tags: ["Cabelo", "Barba", "Sobrancelha", "Cílios"],
   },
 ];
@@ -55,7 +63,7 @@ export function Examples() {
           </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
           {examples.map((ex, i) => (
             <motion.div
               key={ex.title}
