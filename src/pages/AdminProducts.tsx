@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { ProductFormDialog } from "@/components/admin/ProductFormDialog";
+import { ImportProductDialog } from "@/components/admin/ImportProductDialog";
 import { ProductCard } from "@/components/admin/ProductCard";
 import { EditProductDialog } from "@/components/admin/EditProductDialog";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
@@ -33,6 +34,8 @@ interface Product {
   finish: string | null;
   intensity: number | null;
   created_at: string;
+  original_url: string | null;
+  status: string;
 }
 
 const categories = [
@@ -47,6 +50,8 @@ const categories = [
   { value: "hair", label: "Cabelo & Barba" },
 ];
 
+type StatusTab = "all" | "draft" | "published";
+
 export default function AdminProducts() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -56,6 +61,7 @@ export default function AdminProducts() {
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [statusTab, setStatusTab] = useState<StatusTab>("all");
   const [editProduct, setEditProduct] = useState<Product | null>(null);
 
   useEffect(() => {
@@ -83,11 +89,35 @@ export default function AdminProducts() {
     toast({ title: "Produto removido" });
   };
 
+  const handlePublish = async (id: string) => {
+    const { error } = await supabase.from("products").update({ status: "published" } as any).eq("id", id);
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Produto publicado no provador!" });
+      fetchProducts();
+    }
+  };
+
+  const handleUnpublish = async (id: string) => {
+    const { error } = await supabase.from("products").update({ status: "draft" } as any).eq("id", id);
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Produto movido para rascunho" });
+      fetchProducts();
+    }
+  };
+
   const filtered = products.filter((p) => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = filterCategory === "all" || p.category === filterCategory;
-    return matchesSearch && matchesCategory;
+    const matchesStatus = statusTab === "all" || (p.status || "published") === statusTab;
+    return matchesSearch && matchesCategory && matchesStatus;
   });
+
+  const draftCount = products.filter((p) => (p.status || "published") === "draft").length;
+  const publishedCount = products.filter((p) => (p.status || "published") === "published").length;
 
   if (loading || loadingProducts) {
     return (
@@ -111,9 +141,32 @@ export default function AdminProducts() {
             <span className="text-xs text-muted-foreground">
               {products.length}/{limits.maxProducts === Infinity ? "∞" : limits.maxProducts} produtos
             </span>
+            <ImportProductDialog userId={user.id} onSaved={fetchProducts} canAddProduct={canAddProduct} />
             <ProductFormDialog userId={user.id} onSaved={fetchProducts} canAddProduct={canAddProduct} remainingProducts={remainingProducts} />
           </div>
         )}
+      </div>
+
+      {/* Status tabs */}
+      <div className="flex items-center gap-1 mb-4 rounded-xl bg-secondary p-1 w-fit">
+        {([
+          { key: "all" as StatusTab, label: "Todos", count: products.length },
+          { key: "draft" as StatusTab, label: "Rascunhos", count: draftCount },
+          { key: "published" as StatusTab, label: "Publicados", count: publishedCount },
+        ]).map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setStatusTab(tab.key)}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              statusTab === tab.key
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {tab.label}
+            <span className="ml-1.5 text-xs opacity-60">{tab.count}</span>
+          </button>
+        ))}
       </div>
 
       <div className="flex gap-3 mb-6">
@@ -135,13 +188,26 @@ export default function AdminProducts() {
       {filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
           <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="font-bold mb-1">Nenhum produto</h3>
-          <p className="text-sm text-muted-foreground">Adicione seu primeiro produto para começar.</p>
+          <h3 className="font-bold mb-1">
+            {statusTab === "draft" ? "Nenhum rascunho" : statusTab === "published" ? "Nenhum produto publicado" : "Nenhum produto"}
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            {statusTab === "draft"
+              ? "Importe um produto por link para criar rascunhos."
+              : "Adicione ou importe produtos para começar."}
+          </p>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map((p) => (
-            <ProductCard key={p.id} product={p} onDelete={handleDelete} onEdit={(prod) => setEditProduct(prod as Product)} />
+            <ProductCard
+              key={p.id}
+              product={p}
+              onDelete={handleDelete}
+              onEdit={(prod) => setEditProduct(prod as Product)}
+              onPublish={handlePublish}
+              onUnpublish={handleUnpublish}
+            />
           ))}
         </div>
       )}
