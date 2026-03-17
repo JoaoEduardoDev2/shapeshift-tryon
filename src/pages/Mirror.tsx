@@ -136,8 +136,32 @@ const FOREHEAD_RIGHT = 251;
 // Face outline for foundation
 const FACE_OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
 
+// Full-region polygons
+const LEFT_CHEEK_REGION = [205, 50, 187, 147, 123, 116, 117, 118, 119, 100, 126, 142, 203];
+const RIGHT_CHEEK_REGION = [425, 280, 411, 376, 352, 345, 346, 347, 348, 329, 355, 371, 423];
+
 // ─── Landmark smoothing ───
 const SMOOTHING = 0.55; // 0 = no smoothing, 1 = infinite smoothing
+
+const isFullFaceMesh = (lm: unknown): lm is { x: number; y: number; z?: number }[] => {
+  return Array.isArray(lm) && lm.length >= 468;
+};
+
+const traceRegion = (
+  ctx: CanvasRenderingContext2D,
+  lm: { x: number; y: number }[],
+  indices: number[],
+  w: number,
+  h: number
+) => {
+  indices.forEach((idx, i) => {
+    const p = lm[idx];
+    if (!p) return;
+    const x = p.x * w;
+    const y = p.y * h;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+};
 
 function smoothLandmarks(
   current: { x: number; y: number; z?: number }[],
