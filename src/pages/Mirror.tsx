@@ -136,8 +136,32 @@ const FOREHEAD_RIGHT = 251;
 // Face outline for foundation
 const FACE_OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
 
+// Full-region polygons
+const LEFT_CHEEK_REGION = [205, 50, 187, 147, 123, 116, 117, 118, 119, 100, 126, 142, 203];
+const RIGHT_CHEEK_REGION = [425, 280, 411, 376, 352, 345, 346, 347, 348, 329, 355, 371, 423];
+
 // ─── Landmark smoothing ───
 const SMOOTHING = 0.55; // 0 = no smoothing, 1 = infinite smoothing
+
+const isFullFaceMesh = (lm: unknown): lm is { x: number; y: number; z?: number }[] => {
+  return Array.isArray(lm) && lm.length >= 468;
+};
+
+const traceRegion = (
+  ctx: CanvasRenderingContext2D,
+  lm: { x: number; y: number }[],
+  indices: number[],
+  w: number,
+  h: number
+) => {
+  indices.forEach((idx, i) => {
+    const p = lm[idx];
+    if (!p) return;
+    const x = p.x * w;
+    const y = p.y * h;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+};
 
 function smoothLandmarks(
   current: { x: number; y: number; z?: number }[],
@@ -345,22 +369,7 @@ export default function Mirror() {
   }, []);
 
   const initDetection = async () => {
-    // Strategy 1: Try Chrome's FaceDetector API
-    if ("FaceDetector" in window) {
-      try {
-        const detector = new (window as any).FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
-        faceDetectorRef.current = detector;
-        setDetectionMode("facedetector");
-        console.log("[Mirror] Using FaceDetector API (native)");
-        startFaceDetectorLoop();
-        startRenderLoop();
-        return;
-      } catch (e) {
-        console.warn("[Mirror] FaceDetector API failed:", e);
-      }
-    }
-
-    // Strategy 2: MediaPipe FaceMesh
+    // Strategy 1 (primary): MediaPipe FaceMesh completo (468+ pontos)
     try {
       await loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js");
       const w = window as any;
@@ -371,20 +380,23 @@ export default function Mirror() {
         faceMesh.setOptions({
           maxNumFaces: 1,
           refineLandmarks: true,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5,
+          minDetectionConfidence: 0.6,
+          minTrackingConfidence: 0.6,
         });
         faceMesh.onResults((results: any) => {
           if (results.multiFaceLandmarks?.length > 0) {
             const raw = results.multiFaceLandmarks[0];
-            landmarksRef.current = smoothLandmarks(raw, prevLandmarksRef.current);
-            prevLandmarksRef.current = landmarksRef.current;
-            setDetecting(true);
-          } else {
-            landmarksRef.current = null;
-            prevLandmarksRef.current = null;
-            setDetecting(false);
+            if (Array.isArray(raw) && raw.length >= 468) {
+              landmarksRef.current = smoothLandmarks(raw, prevLandmarksRef.current);
+              prevLandmarksRef.current = landmarksRef.current;
+              setDetecting(true);
+              return;
+            }
           }
+
+          landmarksRef.current = null;
+          prevLandmarksRef.current = null;
+          setDetecting(false);
         });
 
         const video = videoRef.current;
@@ -392,7 +404,7 @@ export default function Mirror() {
 
         faceDetectorRef.current = faceMesh;
         setDetectionMode("mediapipe");
-        console.log("[Mirror] Using MediaPipe FaceMesh");
+        console.log("[Mirror] Using MediaPipe FaceMesh 468 landmarks");
         startMediaPipeLoop(faceMesh);
         startRenderLoop();
         return;
@@ -401,7 +413,22 @@ export default function Mirror() {
       console.warn("[Mirror] MediaPipe FaceMesh failed:", e);
     }
 
-    // Strategy 3: Manual fallback
+    // Strategy 2: FaceDetector (somente fallback de detecção, sem precisão de malha completa)
+    if ("FaceDetector" in window) {
+      try {
+        const detector = new (window as any).FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
+        faceDetectorRef.current = detector;
+        setDetectionMode("facedetector");
+        console.log("[Mirror] Using FaceDetector API fallback");
+        startFaceDetectorLoop();
+        startRenderLoop();
+        return;
+      } catch (e) {
+        console.warn("[Mirror] FaceDetector API failed:", e);
+      }
+    }
+
+    // Strategy 3: Manual fallback (detecção estimada)
     console.log("[Mirror] Using manual fallback detection");
     setDetectionMode("manual");
     startManualDetection();
@@ -489,8 +516,9 @@ export default function Mirror() {
         const landmarks = landmarksRef.current;
         const product = selectedProductRef.current;
         const color = selectedColorRef.current;
+        const hasFullMesh = isFullFaceMesh(landmarks);
 
-        if (landmarks && product) {
+        if (hasFullMesh && product) {
           ctx.save();
           if (isMirrored) { ctx.translate(w, 0); ctx.scale(-1, 1); }
 
@@ -514,272 +542,303 @@ export default function Mirror() {
   // ─── Draw functions ───
 
   const drawLipstick = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
-    ctx.globalAlpha = 0.5;
+    if (!isFullFaceMesh(lm)) return;
+
+    ctx.save();
+    ctx.globalAlpha = 0.58;
     ctx.fillStyle = color;
 
-    // Outer lip fill
+    // Outer mouth region
     ctx.beginPath();
-    UPPER_LIP_OUTER.forEach((idx, i) => {
-      const x = lm[idx].x * w, y = lm[idx].y * h;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    traceRegion(ctx, lm, UPPER_LIP_OUTER, w, h);
+    [...LOWER_LIP_OUTER].reverse().forEach((idx) => {
+      ctx.lineTo(lm[idx].x * w, lm[idx].y * h);
     });
-    // Connect to lower lip (reverse direction for solid fill)
+    ctx.closePath();
+
+    // Carve inner mouth opening to avoid painting teeth/tongue
+    ctx.moveTo(lm[UPPER_LIP_INNER[0]].x * w, lm[UPPER_LIP_INNER[0]].y * h);
+    traceRegion(ctx, lm, UPPER_LIP_INNER, w, h);
+    [...LOWER_LIP_INNER].reverse().forEach((idx) => {
+      ctx.lineTo(lm[idx].x * w, lm[idx].y * h);
+    });
+    ctx.closePath();
+    ctx.fill("evenodd");
+
+    // Light glossy pass constrained to lips
+    ctx.globalAlpha = 0.22;
+    const lipCenter = lm[13];
+    const lipGrad = ctx.createRadialGradient(
+      lipCenter.x * w,
+      lipCenter.y * h,
+      0,
+      lipCenter.x * w,
+      lipCenter.y * h,
+      Math.abs(lm[291].x - lm[61].x) * w * 0.65
+    );
+    lipGrad.addColorStop(0, "rgba(255,255,255,0.2)");
+    lipGrad.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = lipGrad;
+
+    ctx.beginPath();
+    traceRegion(ctx, lm, UPPER_LIP_OUTER, w, h);
     [...LOWER_LIP_OUTER].reverse().forEach((idx) => {
       ctx.lineTo(lm[idx].x * w, lm[idx].y * h);
     });
     ctx.closePath();
     ctx.fill();
 
-    // Inner lip for extra saturation
-    ctx.globalAlpha = 0.3;
-    ctx.beginPath();
-    UPPER_LIP_INNER.forEach((idx, i) => {
-      const x = lm[idx].x * w, y = lm[idx].y * h;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
-    [...LOWER_LIP_INNER].reverse().forEach((idx) => {
-      ctx.lineTo(lm[idx].x * w, lm[idx].y * h);
-    });
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.globalAlpha = 1;
+    ctx.restore();
   };
 
   const drawBlush = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
-    // Use proper cheekbone landmarks
+    if (!isFullFaceMesh(lm)) return;
+
     const leftCheek = lm[LEFT_CHEEK];
     const rightCheek = lm[RIGHT_CHEEK];
-    // Adjust cheek center slightly lower and outward for natural placement
     const noseTip = lm[NOSE_TIP];
+    const faceWidth = Math.abs(lm[RIGHT_TRAGUS].x - lm[LEFT_TRAGUS].x) * w;
+    const radius = faceWidth * 0.11;
 
     const cheekPoints = [
-      { x: leftCheek.x * w, y: (leftCheek.y * 0.6 + noseTip.y * 0.4) * h },
-      { x: rightCheek.x * w, y: (rightCheek.y * 0.6 + noseTip.y * 0.4) * h },
+      { x: leftCheek.x * w, y: (leftCheek.y * 0.68 + noseTip.y * 0.32) * h, region: LEFT_CHEEK_REGION },
+      { x: rightCheek.x * w, y: (rightCheek.y * 0.68 + noseTip.y * 0.32) * h, region: RIGHT_CHEEK_REGION },
     ];
 
-    // Scale radius based on face width
-    const faceWidth = Math.abs(lm[RIGHT_TRAGUS].x - lm[LEFT_TRAGUS].x) * w;
-    const radius = faceWidth * 0.12;
-
-    ctx.globalAlpha = 0.22;
     cheekPoints.forEach((pt) => {
+      ctx.save();
+      ctx.beginPath();
+      traceRegion(ctx, lm, pt.region, w, h);
+      ctx.closePath();
+      ctx.clip();
+
       const grad = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, radius);
-      grad.addColorStop(0, color);
-      grad.addColorStop(0.6, color + "80");
-      grad.addColorStop(1, "transparent");
+      grad.addColorStop(0, `${color}CC`);
+      grad.addColorStop(0.6, `${color}66`);
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+
+      ctx.globalAlpha = 0.28;
       ctx.fillStyle = grad;
       ctx.beginPath();
       ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
     });
-    ctx.globalAlpha = 1;
   };
 
   const drawEyeshadow = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
-    ctx.globalAlpha = 0.35;
-    ctx.fillStyle = color;
+    if (!isFullFaceMesh(lm)) return;
 
-    // Draw eyeshadow on upper eyelid area
     [
       { upper: LEFT_EYE_UPPER, lower: LEFT_EYE_LOWER },
       { upper: RIGHT_EYE_UPPER, lower: RIGHT_EYE_LOWER },
     ].forEach(({ upper, lower }) => {
+      const upperPts = upper.map((idx) => ({ x: lm[idx].x * w, y: lm[idx].y * h }));
+      const lowerPts = lower.map((idx) => ({ x: lm[idx].x * w, y: lm[idx].y * h }));
+
+      // Apply only inside eyelid polygon (upper + lower contour)
+      ctx.save();
       ctx.beginPath();
-
-      // Upper lid curve - extend upward for shadow area
-      const upperPoints = upper.map((idx) => ({ x: lm[idx].x * w, y: lm[idx].y * h }));
-
-      // Extend the shadow above the eye
-      const eyeHeight = Math.abs(upperPoints[0].y - (lm[lower[4]]?.y ?? upperPoints[0].y) * h) || w * 0.015;
-      const shadowOffset = eyeHeight * 0.8 + w * 0.008;
-
-      upperPoints.forEach((p, i) => {
-        const x = p.x;
-        const y = p.y - shadowOffset * Math.sin((i / (upperPoints.length - 1)) * Math.PI);
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      });
-
-      // Close along the upper eyelid line
-      [...upperPoints].reverse().forEach((p) => ctx.lineTo(p.x, p.y));
+      upperPts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+      [...lowerPts].reverse().forEach((p) => ctx.lineTo(p.x, p.y));
       ctx.closePath();
+      ctx.clip();
 
-      // Gradient fill for more natural look
-      const centerX = upperPoints[Math.floor(upperPoints.length / 2)].x;
-      const centerY = upperPoints[Math.floor(upperPoints.length / 2)].y - shadowOffset * 0.5;
-      const grad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, shadowOffset * 2);
-      grad.addColorStop(0, color);
-      grad.addColorStop(1, color + "20");
+      const center = upperPts[Math.floor(upperPts.length / 2)];
+      const eyeWidth = Math.hypot(upperPts[0].x - upperPts[upperPts.length - 1].x, upperPts[0].y - upperPts[upperPts.length - 1].y);
+      const grad = ctx.createRadialGradient(center.x, center.y, 0, center.x, center.y, eyeWidth * 0.75);
+      grad.addColorStop(0, `${color}E6`);
+      grad.addColorStop(1, `${color}22`);
+
+      ctx.globalAlpha = 0.38;
       ctx.fillStyle = grad;
-      ctx.fill();
+      ctx.fillRect(center.x - eyeWidth, center.y - eyeWidth, eyeWidth * 2, eyeWidth * 2);
+      ctx.restore();
     });
-    ctx.globalAlpha = 1;
   };
 
   const drawEyeliner = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
-    ctx.globalAlpha = 0.8;
+    if (!isFullFaceMesh(lm)) return;
+
+    ctx.globalAlpha = 0.85;
     ctx.strokeStyle = color;
-    ctx.lineWidth = Math.max(1.5, w * 0.0025);
+    ctx.lineWidth = Math.max(1.4, w * 0.0024);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
     [LEFT_EYE_UPPER, RIGHT_EYE_UPPER].forEach((eye, eyeIdx) => {
       const points = eye.map((idx) => ({ x: lm[idx].x * w, y: lm[idx].y * h }));
 
-      // Draw along upper lash line
       ctx.beginPath();
-      points.forEach((p, i) => {
-        i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
-      });
+      points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
       ctx.stroke();
 
-      // Wing flick at outer corner
       const outerIdx = eyeIdx === 0 ? LEFT_EYE_OUTER : RIGHT_EYE_OUTER;
       const outer = { x: lm[outerIdx].x * w, y: lm[outerIdx].y * h };
-      const wingDir = eyeIdx === 0 ? -1 : 1;
+      const prev = points[points.length - 2];
+      const dirX = outer.x - prev.x;
+      const dirY = outer.y - prev.y;
+      const len = Math.hypot(dirX, dirY) || 1;
+      const nx = dirX / len;
+      const ny = dirY / len;
       const wingLen = w * 0.012;
+
       ctx.beginPath();
       ctx.moveTo(outer.x, outer.y);
-      ctx.lineTo(outer.x + wingDir * wingLen, outer.y - wingLen * 0.8);
+      ctx.lineTo(outer.x + nx * wingLen, outer.y + ny * wingLen - wingLen * 0.35);
       ctx.stroke();
     });
+
     ctx.globalAlpha = 1;
   };
 
   const drawFoundation = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
-    ctx.globalAlpha = 0.12;
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    FACE_OVAL.forEach((idx, i) => {
-      const x = lm[idx].x * w, y = lm[idx].y * h;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
-    ctx.closePath();
-    ctx.fill();
+    if (!isFullFaceMesh(lm)) return;
 
-    // Second pass with blur for smoother look
+    ctx.save();
+    ctx.globalAlpha = 0.14;
+    ctx.fillStyle = color;
+
+    // Face-only mask (with holes on lips and eye openings)
+    ctx.beginPath();
+    traceRegion(ctx, lm, FACE_OVAL, w, h);
+    ctx.closePath();
+
+    ctx.moveTo(lm[UPPER_LIP_OUTER[0]].x * w, lm[UPPER_LIP_OUTER[0]].y * h);
+    traceRegion(ctx, lm, UPPER_LIP_OUTER, w, h);
+    [...LOWER_LIP_OUTER].reverse().forEach((idx) => ctx.lineTo(lm[idx].x * w, lm[idx].y * h));
+    ctx.closePath();
+
+    ctx.moveTo(lm[LEFT_EYE_UPPER[0]].x * w, lm[LEFT_EYE_UPPER[0]].y * h);
+    traceRegion(ctx, lm, LEFT_EYE_UPPER, w, h);
+    [...LEFT_EYE_LOWER].reverse().forEach((idx) => ctx.lineTo(lm[idx].x * w, lm[idx].y * h));
+    ctx.closePath();
+
+    ctx.moveTo(lm[RIGHT_EYE_UPPER[0]].x * w, lm[RIGHT_EYE_UPPER[0]].y * h);
+    traceRegion(ctx, lm, RIGHT_EYE_UPPER, w, h);
+    [...RIGHT_EYE_LOWER].reverse().forEach((idx) => ctx.lineTo(lm[idx].x * w, lm[idx].y * h));
+    ctx.closePath();
+
+    ctx.fill("evenodd");
+
     ctx.globalAlpha = 0.08;
-    ctx.filter = "blur(8px)";
-    ctx.fill();
+    ctx.filter = "blur(6px)";
+    ctx.fill("evenodd");
     ctx.filter = "none";
-    ctx.globalAlpha = 1;
+    ctx.restore();
   };
 
   const drawSunglasses = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
-    // Use eye centers for lens placement
+    if (!isFullFaceMesh(lm)) return;
+
     const leftCenter = eyeCenter(lm, LEFT_EYE_INNER, LEFT_EYE_OUTER);
     const rightCenter = eyeCenter(lm, RIGHT_EYE_INNER, RIGHT_EYE_OUTER);
-    const bridge = lm[NOSE_BRIDGE];
     const leftEar = lm[LEFT_TRAGUS];
     const rightEar = lm[RIGHT_TRAGUS];
 
-    const angle = getFaceAngle(lm, w, h);
-
-    // Eye distance for scaling
     const eyeDist = Math.hypot(
       (rightCenter.x - leftCenter.x) * w,
       (rightCenter.y - leftCenter.y) * h
     );
-    const lensW = eyeDist * 0.52;
-    const lensH = lensW * 0.72;
-    const frameThickness = Math.max(2.5, w * 0.004);
+    const angle = getFaceAngle(lm, w, h);
 
-    // Lens centers
-    const lxc = leftCenter.x * w;
-    const lyc = leftCenter.y * h;
-    const rxc = rightCenter.x * w;
-    const ryc = rightCenter.y * h;
+    const centerX = ((leftCenter.x + rightCenter.x) / 2) * w;
+    const centerY = ((leftCenter.y + rightCenter.y) / 2) * h;
+    const lensW = eyeDist * 0.56;
+    const lensH = lensW * 0.68;
+    const bridgeW = eyeDist * 0.28;
+    const frameThickness = Math.max(2.2, w * 0.0038);
 
-    ctx.save();
-
-    // Frame color
-    ctx.strokeStyle = color;
-    ctx.lineWidth = frameThickness;
-
-    // Lens fill
     const lensColor = color === "#d4a017"
       ? "rgba(120, 90, 30, 0.45)"
       : color === "#92400e"
         ? "rgba(80, 50, 20, 0.5)"
         : "rgba(0, 0, 0, 0.65)";
-    ctx.fillStyle = lensColor;
 
-    // Left lens
-    drawRoundedRect(ctx, lxc - lensW / 2, lyc - lensH / 2, lensW, lensH, lensH * 0.25);
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(angle);
+    ctx.strokeStyle = color;
+    ctx.fillStyle = lensColor;
+    ctx.lineWidth = frameThickness;
+
+    // Lenses in rotated local coordinates
+    drawRoundedRect(ctx, -bridgeW / 2 - lensW, -lensH / 2, lensW, lensH, lensH * 0.28);
     ctx.fill();
     ctx.stroke();
 
-    // Right lens
-    drawRoundedRect(ctx, rxc - lensW / 2, ryc - lensH / 2, lensW, lensH, lensH * 0.25);
+    drawRoundedRect(ctx, bridgeW / 2, -lensH / 2, lensW, lensH, lensH * 0.28);
     ctx.fill();
     ctx.stroke();
 
     // Bridge
     ctx.beginPath();
-    ctx.moveTo(lxc + lensW / 2, lyc);
-    ctx.quadraticCurveTo(bridge.x * w, bridge.y * h + lensH * 0.1, rxc - lensW / 2, ryc);
+    ctx.moveTo(-bridgeW / 2, 0);
+    ctx.lineTo(bridgeW / 2, 0);
     ctx.stroke();
 
-    // Temple arms to ears
-    ctx.lineWidth = frameThickness * 0.7;
+    // Arms to ears projected with head pose
+    const leftArmX = (leftEar.x * w) - centerX;
+    const leftArmY = (leftEar.y * h) - centerY;
+    const rightArmX = (rightEar.x * w) - centerX;
+    const rightArmY = (rightEar.y * h) - centerY;
+
+    ctx.lineWidth = frameThickness * 0.72;
     ctx.beginPath();
-    ctx.moveTo(lxc - lensW / 2, lyc - lensH * 0.15);
-    ctx.lineTo(leftEar.x * w, leftEar.y * h);
+    ctx.moveTo(-bridgeW / 2 - lensW, -lensH * 0.15);
+    ctx.lineTo(leftArmX, leftArmY);
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(rxc + lensW / 2, ryc - lensH * 0.15);
-    ctx.lineTo(rightEar.x * w, rightEar.y * h);
+    ctx.moveTo(bridgeW / 2 + lensW, -lensH * 0.15);
+    ctx.lineTo(rightArmX, rightArmY);
     ctx.stroke();
 
     ctx.restore();
   };
 
   const drawEarrings = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
-    // Use ear lobe landmarks for proper positioning
+    if (!isFullFaceMesh(lm)) return;
+
     const leftLobe = lm[LEFT_EAR_LOBE];
     const rightLobe = lm[RIGHT_EAR_LOBE];
-
-    // Scale based on face width
     const faceWidth = Math.abs(lm[RIGHT_TRAGUS].x - lm[LEFT_TRAGUS].x) * w;
     const baseRadius = faceWidth * 0.022;
     const dropLength = faceWidth * 0.06;
-
-    ctx.globalAlpha = 0.9;
+    const headAngle = getFaceAngle(lm, w, h) * 0.35;
 
     [
       { x: leftLobe.x * w, y: leftLobe.y * h },
       { x: rightLobe.x * w, y: rightLobe.y * h },
     ].forEach((ear) => {
-      // Stud
-      ctx.beginPath();
-      ctx.arc(ear.x, ear.y, baseRadius, 0, Math.PI * 2);
+      ctx.save();
+      ctx.translate(ear.x, ear.y);
+      ctx.rotate(headAngle);
+      ctx.globalAlpha = 0.9;
       ctx.fillStyle = color;
+
+      ctx.beginPath();
+      ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
       ctx.fill();
 
-      // Drop
       ctx.beginPath();
-      ctx.moveTo(ear.x - baseRadius * 0.3, ear.y + baseRadius);
-      ctx.lineTo(ear.x, ear.y + baseRadius + dropLength);
-      ctx.lineTo(ear.x + baseRadius * 0.3, ear.y + baseRadius);
+      ctx.moveTo(-baseRadius * 0.3, baseRadius);
+      ctx.lineTo(0, baseRadius + dropLength);
+      ctx.lineTo(baseRadius * 0.3, baseRadius);
       ctx.closePath();
       ctx.fill();
 
-      // Bottom gem
       ctx.beginPath();
-      ctx.arc(ear.x, ear.y + baseRadius + dropLength, baseRadius * 0.5, 0, Math.PI * 2);
+      ctx.arc(0, baseRadius + dropLength, baseRadius * 0.5, 0, Math.PI * 2);
       ctx.fill();
 
-      // Highlight
-      ctx.globalAlpha = 0.4;
-      ctx.fillStyle = "#ffffff";
+      ctx.globalAlpha = 0.32;
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
       ctx.beginPath();
-      ctx.arc(ear.x - baseRadius * 0.25, ear.y - baseRadius * 0.25, baseRadius * 0.3, 0, Math.PI * 2);
+      ctx.arc(-baseRadius * 0.25, -baseRadius * 0.25, baseRadius * 0.3, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = color;
-      ctx.globalAlpha = 0.9;
+      ctx.restore();
     });
-    ctx.globalAlpha = 1;
   };
 
   const drawRoundedRect = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
