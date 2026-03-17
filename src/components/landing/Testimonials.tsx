@@ -1,7 +1,7 @@
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useScroll, useTransform, useInView, useMotionValue, useSpring, animate } from "framer-motion";
 import { Star, Quote } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useRef } from "react";
+import { useRef, useEffect, useState } from "react";
 
 import carolinaImg from "@/assets/testimonials/carolina.jpg";
 import rafaelImg from "@/assets/testimonials/rafael.jpg";
