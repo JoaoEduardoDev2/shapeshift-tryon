@@ -57,19 +57,24 @@ export type Database = {
           color_tone: string | null
           colors: string[] | null
           created_at: string
+          custom_images: Json | null
           description: string | null
           finish: string | null
           id: string
           image_url: string | null
+          imported_images: Json | null
           intensity: number
           is_active: boolean | null
           makeup_type: string | null
           name: string
+          original_url: string | null
           price: number | null
           share_count: number | null
           sizes: string[] | null
           skin_tone: string | null
           sku: string | null
+          status: string
+          sync_enabled: boolean | null
           tryon_count: number | null
           tryon_mode: string
           undertone: string | null
@@ -83,19 +88,24 @@ export type Database = {
           color_tone?: string | null
           colors?: string[] | null
           created_at?: string
+          custom_images?: Json | null
           description?: string | null
           finish?: string | null
           id?: string
           image_url?: string | null
+          imported_images?: Json | null
           intensity?: number
           is_active?: boolean | null
           makeup_type?: string | null
           name: string
+          original_url?: string | null
           price?: number | null
           share_count?: number | null
           sizes?: string[] | null
           skin_tone?: string | null
           sku?: string | null
+          status?: string
+          sync_enabled?: boolean | null
           tryon_count?: number | null
           tryon_mode?: string
           undertone?: string | null
@@ -109,19 +119,24 @@ export type Database = {
           color_tone?: string | null
           colors?: string[] | null
           created_at?: string
+          custom_images?: Json | null
           description?: string | null
           finish?: string | null
           id?: string
           image_url?: string | null
+          imported_images?: Json | null
           intensity?: number
           is_active?: boolean | null
           makeup_type?: string | null
           name?: string
+          original_url?: string | null
           price?: number | null
           share_count?: number | null
           sizes?: string[] | null
           skin_tone?: string | null
           sku?: string | null
+          status?: string
+          sync_enabled?: boolean | null
           tryon_count?: number | null
           tryon_mode?: string
           undertone?: string | null
