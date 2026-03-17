@@ -76,7 +76,7 @@ export default function Onboarding() {
         email: form.email,
         password: form.password,
         options: {
-          data: { full_name: form.name },
+          data: { full_name: form.name, plan: selectedPlan || "starter" },
           emailRedirectTo: window.location.origin,
         },
       });
@@ -95,12 +95,6 @@ export default function Onboarding() {
           segment: accountType === "pj" ? form.segment : null,
           profession: accountType === "pf" ? form.profession : null,
         }).eq("id", userId);
-
-        await supabase.from("subscriptions").insert({
-          user_id: userId,
-          plan: selectedPlan,
-          subscription_status: "trial",
-        });
       }
 
       toast({
