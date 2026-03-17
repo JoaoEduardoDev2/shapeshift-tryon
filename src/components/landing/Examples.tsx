@@ -1,10 +1,11 @@
 import { motion } from "framer-motion";
-import { Shirt, Palette, Glasses, Sparkles, User } from "lucide-react";
+import { Shirt, Palette, Glasses, Sparkles, User, Scissors } from "lucide-react";
 
 import modaFemImg from "@/assets/examples/moda-feminina.jpg";
 import modaMascImg from "@/assets/examples/moda-masculina.jpg";
 import maquiagemImg from "@/assets/examples/maquiagem.jpg";
 import oculosImg from "@/assets/examples/oculos.jpg";
+import cabeloFemImg from "@/assets/examples/cabelo-feminino.jpg";
 import cabeloBarbaImg from "@/assets/examples/cabelo-barba.jpg";
 
 const examples = [
@@ -37,11 +38,18 @@ const examples = [
     tags: ["Óculos", "Relógio", "Boné", "Brinco"],
   },
   {
-    title: "Cabelo & Barba",
-    description: "Mudança de cor, estilo e comprimento de cabelo e barba com detecção de contorno",
+    title: "Cabelo Feminino",
+    description: "Mudança de cor, estilo e comprimento de cabelo com detecção de contorno",
     icon: Sparkles,
+    image: cabeloFemImg,
+    tags: ["Cabelo", "Coloração", "Corte", "Penteado"],
+  },
+  {
+    title: "Barba & Cabelo Masculino",
+    description: "Simulação de estilos de barba e cortes masculinos com precisão facial",
+    icon: Scissors,
     image: cabeloBarbaImg,
-    tags: ["Cabelo", "Barba", "Sobrancelha", "Cílios"],
+    tags: ["Barba", "Corte", "Fade", "Sobrancelha"],
   },
 ];
 
