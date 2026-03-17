@@ -729,70 +729,69 @@ export default function Mirror() {
   };
 
   const drawSunglasses = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
-    // Use eye centers for lens placement
+    if (!isFullFaceMesh(lm)) return;
+
     const leftCenter = eyeCenter(lm, LEFT_EYE_INNER, LEFT_EYE_OUTER);
     const rightCenter = eyeCenter(lm, RIGHT_EYE_INNER, RIGHT_EYE_OUTER);
-    const bridge = lm[NOSE_BRIDGE];
     const leftEar = lm[LEFT_TRAGUS];
     const rightEar = lm[RIGHT_TRAGUS];
 
-    const angle = getFaceAngle(lm, w, h);
-
-    // Eye distance for scaling
     const eyeDist = Math.hypot(
       (rightCenter.x - leftCenter.x) * w,
       (rightCenter.y - leftCenter.y) * h
     );
-    const lensW = eyeDist * 0.52;
-    const lensH = lensW * 0.72;
-    const frameThickness = Math.max(2.5, w * 0.004);
+    const angle = getFaceAngle(lm, w, h);
 
-    // Lens centers
-    const lxc = leftCenter.x * w;
-    const lyc = leftCenter.y * h;
-    const rxc = rightCenter.x * w;
-    const ryc = rightCenter.y * h;
+    const centerX = ((leftCenter.x + rightCenter.x) / 2) * w;
+    const centerY = ((leftCenter.y + rightCenter.y) / 2) * h;
+    const lensW = eyeDist * 0.56;
+    const lensH = lensW * 0.68;
+    const bridgeW = eyeDist * 0.28;
+    const frameThickness = Math.max(2.2, w * 0.0038);
 
-    ctx.save();
-
-    // Frame color
-    ctx.strokeStyle = color;
-    ctx.lineWidth = frameThickness;
-
-    // Lens fill
     const lensColor = color === "#d4a017"
       ? "rgba(120, 90, 30, 0.45)"
       : color === "#92400e"
         ? "rgba(80, 50, 20, 0.5)"
         : "rgba(0, 0, 0, 0.65)";
-    ctx.fillStyle = lensColor;
 
-    // Left lens
-    drawRoundedRect(ctx, lxc - lensW / 2, lyc - lensH / 2, lensW, lensH, lensH * 0.25);
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(angle);
+    ctx.strokeStyle = color;
+    ctx.fillStyle = lensColor;
+    ctx.lineWidth = frameThickness;
+
+    // Lenses in rotated local coordinates
+    drawRoundedRect(ctx, -bridgeW / 2 - lensW, -lensH / 2, lensW, lensH, lensH * 0.28);
     ctx.fill();
     ctx.stroke();
 
-    // Right lens
-    drawRoundedRect(ctx, rxc - lensW / 2, ryc - lensH / 2, lensW, lensH, lensH * 0.25);
+    drawRoundedRect(ctx, bridgeW / 2, -lensH / 2, lensW, lensH, lensH * 0.28);
     ctx.fill();
     ctx.stroke();
 
     // Bridge
     ctx.beginPath();
-    ctx.moveTo(lxc + lensW / 2, lyc);
-    ctx.quadraticCurveTo(bridge.x * w, bridge.y * h + lensH * 0.1, rxc - lensW / 2, ryc);
+    ctx.moveTo(-bridgeW / 2, 0);
+    ctx.lineTo(bridgeW / 2, 0);
     ctx.stroke();
 
-    // Temple arms to ears
-    ctx.lineWidth = frameThickness * 0.7;
+    // Arms to ears projected with head pose
+    const leftArmX = (leftEar.x * w) - centerX;
+    const leftArmY = (leftEar.y * h) - centerY;
+    const rightArmX = (rightEar.x * w) - centerX;
+    const rightArmY = (rightEar.y * h) - centerY;
+
+    ctx.lineWidth = frameThickness * 0.72;
     ctx.beginPath();
-    ctx.moveTo(lxc - lensW / 2, lyc - lensH * 0.15);
-    ctx.lineTo(leftEar.x * w, leftEar.y * h);
+    ctx.moveTo(-bridgeW / 2 - lensW, -lensH * 0.15);
+    ctx.lineTo(leftArmX, leftArmY);
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(rxc + lensW / 2, ryc - lensH * 0.15);
-    ctx.lineTo(rightEar.x * w, rightEar.y * h);
+    ctx.moveTo(bridgeW / 2 + lensW, -lensH * 0.15);
+    ctx.lineTo(rightArmX, rightArmY);
     ctx.stroke();
 
     ctx.restore();
