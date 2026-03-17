@@ -592,33 +592,38 @@ export default function Mirror() {
   };
 
   const drawBlush = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
-    // Use proper cheekbone landmarks
+    if (!isFullFaceMesh(lm)) return;
+
     const leftCheek = lm[LEFT_CHEEK];
     const rightCheek = lm[RIGHT_CHEEK];
-    // Adjust cheek center slightly lower and outward for natural placement
     const noseTip = lm[NOSE_TIP];
+    const faceWidth = Math.abs(lm[RIGHT_TRAGUS].x - lm[LEFT_TRAGUS].x) * w;
+    const radius = faceWidth * 0.11;
 
     const cheekPoints = [
-      { x: leftCheek.x * w, y: (leftCheek.y * 0.6 + noseTip.y * 0.4) * h },
-      { x: rightCheek.x * w, y: (rightCheek.y * 0.6 + noseTip.y * 0.4) * h },
+      { x: leftCheek.x * w, y: (leftCheek.y * 0.68 + noseTip.y * 0.32) * h, region: LEFT_CHEEK_REGION },
+      { x: rightCheek.x * w, y: (rightCheek.y * 0.68 + noseTip.y * 0.32) * h, region: RIGHT_CHEEK_REGION },
     ];
 
-    // Scale radius based on face width
-    const faceWidth = Math.abs(lm[RIGHT_TRAGUS].x - lm[LEFT_TRAGUS].x) * w;
-    const radius = faceWidth * 0.12;
-
-    ctx.globalAlpha = 0.22;
     cheekPoints.forEach((pt) => {
+      ctx.save();
+      ctx.beginPath();
+      traceRegion(ctx, lm, pt.region, w, h);
+      ctx.closePath();
+      ctx.clip();
+
       const grad = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, radius);
-      grad.addColorStop(0, color);
-      grad.addColorStop(0.6, color + "80");
-      grad.addColorStop(1, "transparent");
+      grad.addColorStop(0, `${color}CC`);
+      grad.addColorStop(0.6, `${color}66`);
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+
+      ctx.globalAlpha = 0.28;
       ctx.fillStyle = grad;
       ctx.beginPath();
       ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
     });
-    ctx.globalAlpha = 1;
   };
 
   const drawEyeshadow = (ctx: CanvasRenderingContext2D, lm: any, w: number, h: number, color: string) => {
