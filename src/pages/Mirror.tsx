@@ -412,6 +412,10 @@ export default function Mirror() {
       video.srcObject = stream;
       await video.play();
       setCameraOn(true);
+      // ── Start the render loop FIRST so the camera feed is visible immediately
+      // ── (before MediaPipe CDN script finishes loading)
+      startRenderLoop();
+      // ── Then start detection in the background
       initDetection();
     } catch (e) {
       console.error("Camera error:", e);
@@ -489,12 +493,12 @@ export default function Mirror() {
 
         faceDetectorRef.current = faceMesh;
         setDetectionMode("mediapipe");
+        console.log("[Mirror] ✅ MediaPipe FaceMesh 468-landmark tracking active");
         startMediaPipeLoop(faceMesh);
-        startRenderLoop();
         return;
       }
     } catch (e) {
-      console.warn("[Mirror] MediaPipe FaceMesh failed:", e);
+      console.warn("[Mirror] MediaPipe FaceMesh failed, trying fallback:", e);
     }
 
     // ── Strategy 2: FaceDetector API ──
@@ -503,18 +507,18 @@ export default function Mirror() {
         const detector = new (window as any).FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
         faceDetectorRef.current = detector;
         setDetectionMode("facedetector");
+        console.log("[Mirror] ✅ FaceDetector API tracking active");
         startFaceDetectorLoop();
-        startRenderLoop();
         return;
       } catch (e) {
-        console.warn("[Mirror] FaceDetector API failed:", e);
+        console.warn("[Mirror] FaceDetector API failed, using manual estimate:", e);
       }
     }
 
     // ── Strategy 3: center-crop manual estimate ──
     setDetectionMode("manual");
+    console.log("[Mirror] ✅ Manual face estimation active");
     startManualDetection();
-    startRenderLoop();
   };
 
   // ──────────────────────────────────────────────────────────
@@ -575,6 +579,8 @@ export default function Mirror() {
       const v = videoRef.current;
       if (!v || v.paused || v.ended) return;
       const vw = v.videoWidth, vh = v.videoHeight;
+      // Guard: video dimensions not ready yet → skip this tick
+      if (vw <= 0 || vh <= 0) return;
       const fw = vw * 0.36, fh = vh * 0.46;
       const box = { x: (vw - fw) / 2, y: vh * 0.07, width: fw, height: fh };
       landmarksRef.current = smoothLandmarks(
@@ -611,12 +617,18 @@ export default function Mirror() {
     if (!ctx) return;
 
     const draw = () => {
-      if (!video.paused && !video.ended) {
-        setCanvasSize();
-        const { w, h } = canvasSizeRef.current;
-        if (w === 0 || h === 0) { animFrameRef.current = requestAnimationFrame(draw); return; }
+      // Always schedule next frame FIRST — this way an exception in draw logic
+      // cannot kill the loop. The frame is simply skipped and drawing resumes next tick.
+      animFrameRef.current = requestAnimationFrame(draw);
 
-        // Draw video frame — no transform on the context; mirroring done via CSS
+      if (video.paused || video.ended) return;
+
+      setCanvasSize();
+      const { w, h } = canvasSizeRef.current;
+      if (w === 0 || h === 0) return;
+
+      try {
+        // Draw video frame — no context transform; mirroring is CSS scaleX(-1)
         ctx.drawImage(video, 0, 0, w, h);
 
         const lm      = landmarksRef.current;
@@ -624,10 +636,6 @@ export default function Mirror() {
         const color   = selectedColorRef.current;
 
         if (isFullFaceMesh(lm) && product) {
-          // Mirror mode: when the canvas CSS is scaleX(-1), landmark x-coords
-          // from MediaPipe are already in the mirrored frame (MediaPipe sees the
-          // same flipped image), so we draw without any extra flip.
-          // When not mirrored: we still skip the ctx-level flip for consistency.
           switch (product) {
             case "lipstick":   drawLipstick(ctx, lm, w, h, color);   break;
             case "blush":      drawBlush(ctx, lm, w, h, color);       break;
@@ -638,8 +646,10 @@ export default function Mirror() {
             case "earrings":   drawEarrings(ctx, lm, w, h, color);    break;
           }
         }
+      } catch (err) {
+        // Log draw errors without stopping the loop
+        console.warn("[Mirror] draw error (frame skipped):", err);
       }
-      animFrameRef.current = requestAnimationFrame(draw);
     };
     draw();
   };
