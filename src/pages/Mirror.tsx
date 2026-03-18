@@ -380,6 +380,8 @@ function getOrLoadImage(url: string): HTMLImageElement {
   if (_imgCache.has(url)) return _imgCache.get(url)!;
   const img = new Image();
   img.crossOrigin = "anonymous";
+  img.onload  = () => console.log("[Mirror] ✅ imagem carregada:", url);
+  img.onerror = () => console.warn("[Mirror] ❌ CORS ou URL inválida:", url);
   img.src = url;
   _imgCache.set(url, img);
   return img;
@@ -1229,111 +1231,70 @@ export default function Mirror() {
   // Head rotation via roll angle; arms follow tragus landmarks.
   const drawSunglasses = (ctx: CanvasRenderingContext2D, lm: LM[], w: number, h: number, color: string, img?: HTMLImageElement) => {
     const iF = Math.max(0.10, Math.min(1.0, intensityRef.current / 100));
+
     const lCenter = eyeCenter(lm, LEFT_EYE_INNER,  LEFT_EYE_OUTER);
     const rCenter = eyeCenter(lm, RIGHT_EYE_INNER, RIGHT_EYE_OUTER);
-
     const eyeDist = Math.hypot(
       (rCenter.x - lCenter.x) * w,
       (rCenter.y - lCenter.y) * h,
     );
     const angle = getFaceAngle(lm, w, h);
     const midX  = ((lCenter.x + rCenter.x) / 2) * w;
-    const midY  = ((lCenter.y + rCenter.y) / 2) * h;
-
-    const lensW       = eyeDist * 0.60;
-    const lensH       = lensW  * 0.72;
-    const bridgeW     = eyeDist * 0.26;
-    const frameStroke = Math.max(2.5, w * 0.0040);
-
-    // Tinted lens colour from frame colour
-    const { r, g, b } = hexToRgb(color);
-    const lensAlpha   = (color === "#1A1A1A" || color === "#152850") ? 0.72 * iF : 0.50 * iF;
-    const lensColor   = `rgba(${r},${g},${b},${Math.min(0.9, lensAlpha).toFixed(3)})`;
+    // Shift slightly up so the bridge sits on the nose, not at iris level
+    const midY  = ((lCenter.y + rCenter.y) / 2) * h - eyeDist * 0.08;
 
     ctx.save();
     ctx.translate(midX, midY);
     ctx.rotate(angle);
 
-    // ── Real product image — used when user selected a DB product with an image ──
     if (img) {
-      const totalW  = lensW * 2 + bridgeW * 1.15;
-      const aspect  = img.naturalHeight && img.naturalWidth ? img.naturalHeight / img.naturalWidth : 0.40;
-      const totalH  = totalW * aspect;
-      ctx.shadowColor   = "rgba(0,0,0,0.32)";
-      ctx.shadowBlur    = Math.max(6, frameStroke * 3);
-      ctx.shadowOffsetY = frameStroke * 1.2;
+      // ── Real product image ─────────────────────────────────────────────
+      // Frame width = 2.4× inter-eye-distance (standard AR glasses scale factor).
+      // globalCompositeOperation "multiply" makes white/near-white background pixels
+      // transparent, so product images on white backgrounds appear cleanly on the skin.
+      const frameW = eyeDist * 2.4;
+      const aspect = img.naturalHeight && img.naturalWidth
+        ? img.naturalHeight / img.naturalWidth : 0.40;
+      const frameH = frameW * aspect;
+
+      ctx.shadowColor   = "rgba(0,0,0,0.28)";
+      ctx.shadowBlur    = 10;
+      ctx.shadowOffsetY = 3;
       ctx.globalAlpha   = Math.min(0.97, iF);
-      ctx.drawImage(img, -totalW / 2, -totalH / 2, totalW, totalH);
+      ctx.globalCompositeOperation = "multiply" as GlobalCompositeOperation;
+      ctx.drawImage(img, -frameW / 2, -frameH / 2, frameW, frameH);
+      ctx.globalCompositeOperation = "source-over";
+      if (debugFrameRef.current % 120 === 0) console.log("[Mirror] 👓 renderizando óculos:", img.src.slice(-40));
       ctx.restore();
       return;
     }
 
-    ctx.strokeStyle = color;
-    ctx.lineWidth   = frameStroke;
+    // ── Demo fallback: clean filled lenses only — NO strokes, NO lines ──
+    // Filled semi-transparent rounded rects with specular glare.
+    const lensW   = eyeDist * 0.60;
+    const lensH   = lensW  * 0.68;
+    const bridgeW = eyeDist * 0.26;
+    const { r, g, b } = hexToRgb(color);
+    const isDark  = (r + g + b) < 200;
+    const alpha   = isDark
+      ? Math.min(0.78, 0.72 * iF)
+      : Math.min(0.60, 0.52 * iF);
+    const lensColor = `rgba(${r},${g},${b},${alpha.toFixed(3)})`;
 
-    // ── Lens placement: coordinate system is translated to face centre & rotated ──
-    // Person's LEFT eye is at HIGH canvas-X → positive local-X after translate.
-    // Person's RIGHT eye is at LOW canvas-X  → negative local-X after translate.
-    // CSS scaleX(-1) flips the display so everything appears correct to the viewer.
-    //
-    // Left lens  → positive-X side (canvas RIGHT → viewer LEFT after flip)
-    // Right lens → negative-X side (canvas LEFT  → viewer RIGHT after flip)
-
-    // ── Left lens (person's left eye, positive side) ──
     ctx.fillStyle = lensColor;
-    drawRoundedRect(ctx, bridgeW / 2, -lensH / 2, lensW, lensH, lensH * 0.30);
+    drawRoundedRect(ctx,  bridgeW / 2,         -lensH / 2, lensW, lensH, lensH * 0.30);
     ctx.fill();
-    ctx.stroke();
-
-    // ── Right lens (person's right eye, negative side) ──
     drawRoundedRect(ctx, -bridgeW / 2 - lensW, -lensH / 2, lensW, lensH, lensH * 0.30);
     ctx.fill();
-    ctx.stroke();
 
-    // ── Bridge ──
+    // Specular glare spots (upper-inner corner of each lens)
+    ctx.globalAlpha = 0.26;
+    ctx.fillStyle   = "rgba(255,255,255,0.95)";
     ctx.beginPath();
-    ctx.moveTo(-bridgeW / 2, lensH * 0.05);
-    ctx.bezierCurveTo(-bridgeW / 6, -lensH * 0.08, bridgeW / 6, -lensH * 0.08, bridgeW / 2, lensH * 0.05);
-    ctx.stroke();
-
-    // ── Arms (temple pieces) — drawn in rotated coords, targeting tragus ──
-    const leftTragus  = lm[LEFT_TRAGUS];
-    const rightTragus = lm[RIGHT_TRAGUS];
-    // Convert tragus from canvas coords to local rotated coords
-    const toLocal = (lmx: number, lmy: number) => {
-      const dx = lmx * w - midX;
-      const dy = lmy * h - midY;
-      return {
-        x:  dx * Math.cos(-angle) - dy * Math.sin(-angle),
-        y:  dx * Math.sin(-angle) + dy * Math.cos(-angle),
-      };
-    };
-    const lTragusLocal  = toLocal(leftTragus.x,  leftTragus.y);
-    const rTragusLocal  = toLocal(rightTragus.x, rightTragus.y);
-
-    ctx.lineWidth = frameStroke * 0.68;
-    // Left arm: outer edge of left lens → LEFT_TRAGUS (both at positive/high canvas-X)
-    ctx.beginPath();
-    ctx.moveTo(bridgeW / 2 + lensW,  lensH * 0.08);
-    ctx.lineTo(lTragusLocal.x, lTragusLocal.y);
-    ctx.stroke();
-
-    // Right arm: outer edge of right lens → RIGHT_TRAGUS (both at negative/low canvas-X)
-    ctx.beginPath();
-    ctx.moveTo(-bridgeW / 2 - lensW,  lensH * 0.08);
-    ctx.lineTo(rTragusLocal.x, rTragusLocal.y);
-    ctx.stroke();
-
-    // ── Glare on lenses (upper-inner corner of each lens) ──
-    ctx.globalAlpha = 0.22;
-    ctx.fillStyle   = "rgba(255,255,255,0.8)";
-    // Left lens glare (upper-inner: inner edge is at bridgeW/2, upper is at -lensH/2)
-    ctx.beginPath();
-    ctx.ellipse(bridgeW / 2 + lensW * 0.22, -lensH * 0.20, lensW * 0.14, lensH * 0.08, -0.4, 0, Math.PI * 2);
+    ctx.ellipse( bridgeW / 2 + lensW * 0.22,  -lensH * 0.20, lensW * 0.14, lensH * 0.09, -0.4, 0, Math.PI * 2);
     ctx.fill();
-    // Right lens glare
     ctx.beginPath();
-    ctx.ellipse(-bridgeW / 2 - lensW * 0.22, -lensH * 0.20, lensW * 0.14, lensH * 0.08, -0.4, 0, Math.PI * 2);
+    ctx.ellipse(-bridgeW / 2 - lensW * 0.22,  -lensH * 0.20, lensW * 0.14, lensH * 0.09, -0.4, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
@@ -1362,13 +1323,16 @@ export default function Mirror() {
 
       // ── Real earring image ────────────────────────────────────────────
       if (img) {
-        const earW   = faceW * 0.09;
-        const aspect = img.naturalHeight && img.naturalWidth ? img.naturalHeight / img.naturalWidth : 1.4;
+        const earW   = faceW * 0.10;
+        const aspect = img.naturalHeight && img.naturalWidth ? img.naturalHeight / img.naturalWidth : 1.6;
         const earH   = earW * aspect;
-        ctx.shadowColor   = "rgba(0,0,0,0.28)";
-        ctx.shadowBlur    = 5;
-        ctx.shadowOffsetX = 2;
+        ctx.shadowColor   = "rgba(0,0,0,0.30)";
+        ctx.shadowBlur    = 6;
+        ctx.shadowOffsetX = 1.5;
+        ctx.globalCompositeOperation = "multiply" as GlobalCompositeOperation;
         ctx.drawImage(img, -earW / 2, 0, earW, earH);
+        ctx.globalCompositeOperation = "source-over";
+        if (debugFrameRef.current % 120 === 0) console.log("[Mirror] 💍 renderizando brinco:", img.src.slice(-40));
         ctx.restore();
         return;
       }
