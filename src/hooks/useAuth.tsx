@@ -26,8 +26,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        // Stale / invalidated refresh token stored locally — clear it without
+        // making a network request so the 400 on /auth/v1/token doesn't repeat.
+        supabase.auth.signOut({ scope: "local" });
+        setSession(null);
+      } else {
+        setSession(session);
+      }
       setLoading(false);
     });
 
