@@ -28,15 +28,33 @@ Deno.serve(async (req) => {
     }
 
     const baseUrl = store_url.replace(/\/+$/, "");
-    const apiUrl = `${baseUrl}/wp-json/wc/v3/products?per_page=100&consumer_key=${consumer_key}&consumer_secret=${consumer_secret}`;
-
-    const wcRes = await fetch(apiUrl);
+    // Credentials MUST go in the Authorization header, not the URL,
+    // to prevent them leaking into server access logs.
+    const apiUrl = `${baseUrl}/wp-json/wc/v3/products?per_page=100`;
+    const credentials = btoa(`${consumer_key}:${consumer_secret}`);
+    console.log("[woocommerce-import] GET", apiUrl);
+    const wcCtrl = new AbortController();
+    const wcTimer = setTimeout(() => wcCtrl.abort(), 15000);
+    let wcRes: Response;
+    try {
+      wcRes = await fetch(apiUrl, {
+        signal: wcCtrl.signal,
+        headers: {
+          "Authorization": `Basic ${credentials}`,
+          "Content-Type": "application/json",
+        },
+      });
+    } finally {
+      clearTimeout(wcTimer);
+    }
     if (!wcRes.ok) {
       const errText = await wcRes.text();
-      return new Response(JSON.stringify({ error: `WooCommerce API error (${wcRes.status})`, details: errText }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      console.error("[woocommerce-import] API error", wcRes.status, errText.slice(0, 200));
+      return new Response(JSON.stringify({ error: `WooCommerce API error (${wcRes.status}): verifique a URL, Consumer Key e Consumer Secret`, details: errText.slice(0, 500) }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const products = await wcRes.json();
+    console.log("[woocommerce-import] produtos encontrados:", products.length);
     const mapped = products.map((p: any) => ({
       user_id: userId,
       name: p.name || "Sem nome",
@@ -46,7 +64,8 @@ Deno.serve(async (req) => {
       price: p.price ? parseFloat(p.price) : null,
       sku: p.sku || null,
       is_active: p.status === "publish",
-    }));
+      original_url: p.permalink ?? null,
+      import_type: "integration",
 
     let imported = 0, skipped = 0;
     for (const product of mapped) {

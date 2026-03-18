@@ -42,36 +42,55 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Nuvemshop/Tiendanube API
+    // Nuvemshop/Tiendanube API (15 s timeout)
     const apiUrl = `https://api.tiendanube.com/v1/${store_id}/products?per_page=200`;
-    const nsRes = await fetch(apiUrl, {
-      headers: {
-        "Authentication": `bearer ${access_token}`,
-        "User-Agent": "VirtualFit/1.0",
-        "Content-Type": "application/json",
-      },
-    });
+    console.log("[nuvemshop-import] GET", apiUrl);
+    const nsCtrl = new AbortController();
+    const nsTimer = setTimeout(() => nsCtrl.abort(), 15000);
+    let nsRes: Response;
+    try {
+      nsRes = await fetch(apiUrl, {
+        signal: nsCtrl.signal,
+        headers: {
+          "Authentication": `bearer ${access_token}`,
+          "User-Agent": "VirtualFit/1.0",
+          "Content-Type": "application/json",
+        },
+      });
+    } finally {
+      clearTimeout(nsTimer);
+    }
 
     if (!nsRes.ok) {
       const errText = await nsRes.text();
+      console.error("[nuvemshop-import] API error", nsRes.status, errText.slice(0, 200));
       return new Response(
-        JSON.stringify({ error: `Nuvemshop API error (${nsRes.status})`, details: errText }),
+        JSON.stringify({ error: `Nuvemshop API error (${nsRes.status}): verifique o Store ID e o Access Token`, details: errText.slice(0, 500) }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const products = await nsRes.json();
+    console.log("[nuvemshop-import] produtos encontrados:", products.length);
 
-    const mapped = products.map((p: any) => ({
-      user_id: userId,
-      name: p.name?.pt || p.name?.es || p.name?.en || Object.values(p.name || {})[0] || "Sem nome",
-      description: (p.description?.pt || p.description?.es || "")?.replace(/<[^>]*>/g, "").slice(0, 500) || null,
-      category: mapCategory(p.categories?.[0]?.name?.pt || ""),
-      image_url: p.images?.[0]?.src || null,
-      price: p.variants?.[0]?.price ? parseFloat(p.variants[0].price) : null,
-      sku: p.variants?.[0]?.sku || null,
-      is_active: p.published,
-    }));
+    const mapped = products.map((p: any) => {
+      // Nuvemshop returns protocol-relative URLs (//cdn.tiendanube.com/...) — add https:
+      const fixUrl = (u: string | null) =>
+        u ? (u.startsWith("//") ? `https:${u}` : u) : null;
+      return {
+        user_id: userId,
+        name: p.name?.pt || p.name?.es || p.name?.en || Object.values(p.name || {})[0] || "Sem nome",
+        description: (p.description?.pt || p.description?.es || "")?.replace(/<[^>]*>/g, "").slice(0, 500) || null,
+        category: mapCategory(p.categories?.[0]?.name?.pt || ""),
+        image_url: fixUrl(p.images?.[0]?.src ?? null),
+        imported_images: (p.images ?? []).map((img: any) => fixUrl(img.src)).filter(Boolean),
+        price: p.variants?.[0]?.price ? parseFloat(p.variants[0].price) : null,
+        sku: p.variants?.[0]?.sku || null,
+        is_active: p.published,
+        original_url: p.canonical_url ?? null,
+        import_type: "integration",
+      };
+    });
 
     let imported = 0;
     let skipped = 0;

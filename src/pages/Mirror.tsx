@@ -21,70 +21,89 @@ interface ProductItem {
   category: ProductCategory;
 }
 
-const products: ProductItem[] = [
+/** Real product loaded from the user's Supabase catalog */
+interface RealProduct {
+  id: string;
+  name: string;
+  makeup_type: string | null;
+  category: string;
+  color_hex: string | null;
+  image_url: string | null;
+}
+
+/**
+ * Demo products — shown when the user has no imported products.
+ * Colors are hand-picked to represent real-world cosmetics shades.
+ */
+const DEMO_PRODUCTS: ProductItem[] = [
   {
     id: "lipstick", name: "Batom", icon: Palette, category: "beauty",
     colors: [
-      { name: "Vermelho", color: "#be185d" },
-      { name: "Rosa", color: "#ec4899" },
-      { name: "Nude", color: "#d4a574" },
-      { name: "Coral", color: "#f97316" },
-      { name: "Vinho", color: "#881337" },
-      { name: "Roxo", color: "#7c3aed" },
+      { name: "Vermelho Clássico",  color: "#C0152F" },
+      { name: "Rosa Intenso",       color: "#D63A6B" },
+      { name: "Nude Rosado",        color: "#C4896A" },
+      { name: "Coral Vibrante",     color: "#E8623A" },
+      { name: "Vinho Profundo",     color: "#6D1A30" },
+      { name: "Malva",              color: "#A05278" },
     ],
   },
   {
     id: "blush", name: "Blush", icon: Sparkles, category: "beauty",
     colors: [
-      { name: "Pêssego", color: "#fda4af" },
-      { name: "Rosa", color: "#f472b6" },
-      { name: "Coral", color: "#fb923c" },
-      { name: "Berry", color: "#c026d3" },
+      { name: "Pêssego Suave",   color: "#F5957A" },
+      { name: "Rosa Natural",    color: "#E87AAE" },
+      { name: "Coral Quente",    color: "#F06040" },
+      { name: "Berry",           color: "#C04880" },
+      { name: "Bronze Dourado",  color: "#D48040" },
     ],
   },
   {
     id: "eyeshadow", name: "Sombra", icon: Eye, category: "beauty",
     colors: [
-      { name: "Dourado", color: "#d4a017" },
-      { name: "Bronze", color: "#a0522d" },
-      { name: "Roxo", color: "#7c3aed" },
-      { name: "Azul", color: "#3b82f6" },
-      { name: "Verde", color: "#22c55e" },
-      { name: "Rosa", color: "#ec4899" },
+      { name: "Dourado",    color: "#D4A820" },
+      { name: "Bronze",     color: "#A8602A" },
+      { name: "Rosê",       color: "#D890B0" },
+      { name: "Roxo",       color: "#7040C0" },
+      { name: "Terracota",  color: "#C05830" },
+      { name: "Azul",       color: "#2858B0" },
     ],
   },
   {
     id: "eyeliner", name: "Delineador", icon: Brush, category: "beauty",
     colors: [
-      { name: "Preto", color: "#18181b" },
-      { name: "Marrom", color: "#78350f" },
-      { name: "Azul", color: "#1d4ed8" },
-      { name: "Verde", color: "#166534" },
+      { name: "Preto",           color: "#1A1A1A" },
+      { name: "Marrom",          color: "#6B3520" },
+      { name: "Azul Meia-Noite", color: "#152850" },
+      { name: "Verde Floresta",  color: "#1A4020" },
     ],
   },
   {
     id: "foundation", name: "Base", icon: Palette, category: "beauty",
     colors: [
-      { name: "Clara", color: "#f5deb3" },
-      { name: "Média", color: "#d2b48c" },
-      { name: "Morena", color: "#a0522d" },
-      { name: "Escura", color: "#6b3a2a" },
+      { name: "Porcelana",   color: "#F5DEC8" },
+      { name: "Bege Claro",  color: "#E8C8A8" },
+      { name: "Dourado",     color: "#D4A878" },
+      { name: "Caramelo",    color: "#B87848" },
+      { name: "Castanho",    color: "#906030" },
+      { name: "Ébano",       color: "#6A3820" },
     ],
   },
   {
     id: "sunglasses", name: "Óculos de Sol", icon: Glasses, category: "accessories",
     colors: [
-      { name: "Preto", color: "#18181b" },
-      { name: "Tartaruga", color: "#92400e" },
-      { name: "Aviador Dourado", color: "#d4a017" },
+      { name: "Preto Clássico",  color: "#1A1A1A" },
+      { name: "Tartaruga",       color: "#8B4513" },
+      { name: "Dourado Aviador", color: "#D4A020" },
+      { name: "Azul Espelhado",  color: "#1A3A6B" },
     ],
   },
   {
     id: "earrings", name: "Brincos", icon: Crown, category: "accessories",
     colors: [
-      { name: "Ouro", color: "#d4a017" },
-      { name: "Prata", color: "#a1a1aa" },
-      { name: "Rosê Gold", color: "#e8a0bf" },
+      { name: "Ouro",       color: "#D4A020" },
+      { name: "Prata",      color: "#A8A8B8" },
+      { name: "Rosê Gold",  color: "#D49090" },
+      { name: "Bronze",     color: "#A06030" },
     ],
   },
 ];
@@ -351,6 +370,101 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
 }
 
+// ────────────────────────────────────────────────────────────
+// extractDominantColor
+// Samples the inner 40% of a product image and returns the most
+// saturated representative color as "#rrggbb".
+// Works cross-origin via CORS (img.crossOrigin = "anonymous").
+// Falls back to a neutral red if the image can't be sampled.
+// ────────────────────────────────────────────────────────────
+async function extractDominantColor(imageUrl: string): Promise<string> {
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.crossOrigin = "anonymous";
+      i.onload  = () => resolve(i);
+      i.onerror = reject;
+      // abort if image takes > 8 s
+      setTimeout(() => reject(new Error("timeout")), 8000);
+      i.src = imageUrl;
+    });
+
+    const SIZE = 80;
+    const oc   = new OffscreenCanvas(SIZE, SIZE);
+    const octx = oc.getContext("2d")!;
+    octx.drawImage(img, 0, 0, SIZE, SIZE);
+
+    // Sample inner 40% — avoids white/neutral backgrounds
+    const margin = Math.round(SIZE * 0.30);
+    const dim    = SIZE - margin * 2;
+    const { data } = octx.getImageData(margin, margin, dim, dim);
+
+    const pixels: { r: number; g: number; b: number; sat: number }[] = [];
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+      if (a < 128) continue;
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const l   = (max + min) / 2;
+      if (l < 25 || l > 235) continue;                      // skip near-black / near-white
+      const sat = max === 0 ? 0 : (max - min) / max;
+      if (sat > 0.18) pixels.push({ r, g, b, sat });
+    }
+
+    if (pixels.length === 0) return "#C0152F";
+
+    // Weighted average of the top 30% most-saturated pixels → stable dominant color
+    pixels.sort((a, z) => z.sat - a.sat);
+    const top  = pixels.slice(0, Math.max(1, Math.floor(pixels.length * 0.30)));
+    const avgR = Math.round(top.reduce((s, p) => s + p.r, 0) / top.length);
+    const avgG = Math.round(top.reduce((s, p) => s + p.g, 0) / top.length);
+    const avgB = Math.round(top.reduce((s, p) => s + p.b, 0) / top.length);
+    return "#" + [avgR, avgG, avgB]
+      .map(v => Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0"))
+      .join("");
+  } catch {
+    return "#C0152F";
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// analyzeFaceLighting
+// Samples pixel brightness at the forehead region to adapt
+// makeup opacity to ambient lighting conditions.
+// Returns 0.75–1.25 (1.0 = average/neutral lighting).
+// ────────────────────────────────────────────────────────────
+function analyzeFaceLighting(
+  ctx: CanvasRenderingContext2D,
+  lm: LM[],
+  w: number,
+  h: number,
+): number {
+  try {
+    const fh = lm[FOREHEAD_TOP];
+    if (!fh) return 1.0;
+    const px   = Math.round(fh.x * w);
+    const py   = Math.round(fh.y * h + h * 0.04);
+    const size = Math.max(4, Math.round(w * 0.04));
+    const x0   = Math.max(0, px - size);
+    const y0   = Math.max(0, py);
+    const sw   = Math.min(size * 2, w - x0);
+    const sh   = Math.min(size,     h - y0);
+    if (sw <= 0 || sh <= 0) return 1.0;
+    const { data } = ctx.getImageData(x0, y0, sw, sh);
+    let sum = 0, count = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      // Perceived luminance (ITU BT.601)
+      sum += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+      count++;
+    }
+    const avg = count > 0 ? sum / count : 128;
+    // 50 (dim) → 0.78 | 128 (neutral) → 1.00 | 210 (bright) → 1.22
+    return Math.max(0.75, Math.min(1.25, avg / 128));
+  } catch {
+    return 1.0;
+  }
+}
+
 type DetectionMode = "loading" | "mediapipe" | "facedetector" | "manual";
 
 export default function Mirror() {
@@ -361,27 +475,36 @@ export default function Mirror() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [cameraOn, setCameraOn] = useState(false);
   const [mirrored, setMirrored] = useState(true);
-  const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
-  const [selectedColor, setSelectedColor] = useState<string>("#be185d");
+  // Map: productId → chosen hex color — allows multiple simultaneous products
+  const [selectedProducts, setSelectedProducts] = useState<Map<string, string>>(new Map());
   const [detecting, setDetecting] = useState(false);
   const [activeTab, setActiveTab] = useState<ProductCategory>("beauty");
   const [detectionMode, setDetectionMode] = useState<DetectionMode>("loading");
+  // Intensity 0-100 — controls opacity of all makeup/accessories overlays
+  const [intensity, setIntensity] = useState(70);
+  // Real products loaded from the user's Supabase catalog
+  const [dbProducts, setDbProducts] = useState<RealProduct[]>([]);
 
   const streamRef        = useRef<MediaStream | null>(null);
   const animFrameRef     = useRef<number>(0);
   const landmarksRef     = useRef<LM[] | null>(null);
   const prevLandmarksRef = useRef<LM[] | null>(null);
   const detectIntervalRef  = useRef<number>(0);
-  const selectedProductRef = useRef<string | null>(null);
-  const selectedColorRef   = useRef<string>("#be185d");
-  const mirroredRef        = useRef(true);
-  const faceDetectorRef    = useRef<any>(null);
+  const selectedProductsRef = useRef<Map<string, string>>(new Map());
+  const mirroredRef         = useRef(true);
+  const faceDetectorRef     = useRef<any>(null);
+  const debugFrameRef       = useRef(0);
   // Canvas logical size is set ONCE when the camera starts; never reset inside the draw loop
   const canvasSizeRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
+  // Records when the render loop started (used by the canvas render-test diagnostic)
+  const canvasStartTimeRef = useRef<number>(0);
 
-  selectedProductRef.current = selectedProduct;
-  selectedColorRef.current   = selectedColor;
-  mirroredRef.current        = mirrored;
+  selectedProductsRef.current = selectedProducts;
+  mirroredRef.current         = mirrored;
+  // Refs kept in sync with state so the render-loop closure sees current values
+  const intensityRef    = useRef(70);
+  const lightFactorRef  = useRef(1.0);
+  intensityRef.current  = intensity;
 
   // Load product from query param
   useEffect(() => {
@@ -391,16 +514,50 @@ export default function Mirror() {
       if (!data) return;
       const p = data as any;
       if (p.makeup_type && p.color_hex) {
-        setSelectedProduct(p.makeup_type);
-        setSelectedColor(p.color_hex);
+        setSelectedProducts(new Map([[p.makeup_type, p.color_hex]]));
         setActiveTab("beauty");
       } else if (p.category === "eyewear") {
-        setSelectedProduct("sunglasses");
-        if (p.color_hex) setSelectedColor(p.color_hex);
+        setSelectedProducts(new Map([["sunglasses", p.color_hex ?? "#18181b"]]));
         setActiveTab("accessories");
       }
     });
   }, [searchParams]);
+
+  // Load real products from the user's catalog.
+  // For products without a stored color_hex, extract the dominant color from the image.
+  useEffect(() => {
+    const loadProducts = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, name, makeup_type, category, color_hex, image_url")
+        .eq("is_active", true)
+        .not("makeup_type", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(40);
+
+      if (error || !data?.length) return;
+
+      const enriched = await Promise.allSettled(
+        data.map(async (p): Promise<RealProduct> => {
+          let hex = (p.color_hex as string | null);
+          if (!hex && p.image_url) {
+            hex = await extractDominantColor(p.image_url);
+          }
+          return { ...(p as any), color_hex: hex ?? "#C0152F" };
+        })
+      );
+
+      setDbProducts(
+        enriched
+          .filter((r): r is PromiseFulfilledResult<RealProduct> => r.status === "fulfilled")
+          .map(r => r.value)
+      );
+    };
+    loadProducts();
+  }, []);
 
   const startCamera = useCallback(async () => {
     try {
@@ -409,14 +566,37 @@ export default function Mirror() {
       });
       streamRef.current = stream;
       const video = videoRef.current!;
-      video.srcObject = stream;
-      await video.play();
+      // Explicitly set muted + playsInline — required by autoplay policy on some browsers
+      video.muted       = true;
+      video.playsInline = true;
+      video.srcObject   = stream;
+
+      // ── FIX 1: wait for video dimensions BEFORE sizing the canvas ─────────
+      // video.play() resolves when playback starts, NOT when videoWidth is known.
+      // Without this wait, canvas stays 0×0 and nothing renders.
+      await new Promise<void>((resolve) => {
+        if (video.readyState >= 1) { resolve(); return; }
+        video.onloadedmetadata = () => resolve();
+      });
+      await video.play().catch((e: unknown) => console.warn("[Mirror] play():", e));
+      console.log("[Mirror] ✅ Camera started", video.videoWidth, "×", video.videoHeight);
+
       setCameraOn(true);
-      // ── Start the render loop FIRST so the camera feed is visible immediately
-      // ── (before MediaPipe CDN script finishes loading)
+      // Canvas size is guaranteed correct from frame 1 now
       startRenderLoop();
-      // ── Then start detection in the background
+      // Start face detection — MediaPipe CDN may take several seconds to load
       initDetection();
+
+      // ── FIX 2: watchdog — if MediaPipe CDN hangs and no landmarks arrive
+      //    within 8 s, force the manual-estimation fallback so products always render.
+      window.setTimeout(() => {
+        if (streamRef.current && !landmarksRef.current) {
+          console.warn("[Mirror] Watchdog: no landmarks after 8 s → forcing manual mode");
+          clearInterval(detectIntervalRef.current);
+          setDetectionMode("manual");
+          startManualDetection();
+        }
+      }, 8000);
     } catch (e) {
       console.error("Camera error:", e);
     }
@@ -454,9 +634,15 @@ export default function Mirror() {
   const initDetection = async () => {
     // ── Strategy 1: MediaPipe FaceMesh (468 + refined iris = 478 points) ──
     try {
-      await loadScript(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js"
-      );
+      // ── FIX 3: timeout on CDN load — prevents infinite hang if network is slow
+      await Promise.race([
+        loadScript(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js"
+        ),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("MediaPipe CDN timeout after 12 s")), 12000)
+        ),
+      ]);
       const win = window as any;
       if (win.FaceMesh) {
         const faceMesh = new win.FaceMesh({
@@ -473,6 +659,8 @@ export default function Mirror() {
         faceMesh.onResults((results: any) => {
           if (results.multiFaceLandmarks?.length > 0) {
             const raw: { x: number; y: number; z: number }[] = results.multiFaceLandmarks[0];
+            // ── FIX 4: landmark debug log (required for debugging)
+            console.log("[Mirror] FaceMesh landmarks:", raw.length, "pts →", raw[0]);
             if (Array.isArray(raw) && raw.length >= 468) {
               landmarksRef.current = smoothLandmarks(raw, prevLandmarksRef.current);
               prevLandmarksRef.current = landmarksRef.current;
@@ -616,6 +804,10 @@ export default function Mirror() {
     const ctx = canvas.getContext("2d", { willReadFrequently: false, alpha: false });
     if (!ctx) return;
 
+    // ── FIX 5: record when the loop started (used by canvas render-test below)
+    canvasStartTimeRef.current = Date.now();
+    console.log("[Mirror] ✅ Render loop started");
+
     const draw = () => {
       // Always schedule next frame FIRST — this way an exception in draw logic
       // cannot kill the loop. The frame is simply skipped and drawing resumes next tick.
@@ -631,19 +823,52 @@ export default function Mirror() {
         // Draw video frame — no context transform; mirroring is CSS scaleX(-1)
         ctx.drawImage(video, 0, 0, w, h);
 
-        const lm      = landmarksRef.current;
-        const product = selectedProductRef.current;
-        const color   = selectedColorRef.current;
+        // ── FIX 5 (continued): canvas render test ───────────────────────────
+        // A green dot + text visible for the first 3 s after camera start.
+        // If this appears → canvas pipeline is working end-to-end.
+        const _elapsed = Date.now() - canvasStartTimeRef.current;
+        if (_elapsed < 3000) {
+          ctx.save();
+          ctx.globalAlpha = 0.90;
+          ctx.fillStyle   = "#22c55e";
+          ctx.beginPath();
+          ctx.arc(w - 28, 28, 16, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+          ctx.fillStyle   = "white";
+          ctx.font        = `bold ${Math.max(10, Math.round(w * 0.012))}px monospace`;
+          ctx.textAlign   = "right";
+          ctx.fillText("CANVAS ✓", w - 50, 33);
+          ctx.restore();
+        }
 
-        if (isFullFaceMesh(lm) && product) {
-          switch (product) {
-            case "lipstick":   drawLipstick(ctx, lm, w, h, color);   break;
-            case "blush":      drawBlush(ctx, lm, w, h, color);       break;
-            case "eyeshadow":  drawEyeshadow(ctx, lm, w, h, color);   break;
-            case "eyeliner":   drawEyeliner(ctx, lm, w, h, color);    break;
-            case "foundation": drawFoundation(ctx, lm, w, h, color);  break;
-            case "sunglasses": drawSunglasses(ctx, lm, w, h, color);  break;
-            case "earrings":   drawEarrings(ctx, lm, w, h, color);    break;
+        const lm            = landmarksRef.current;
+        const selectedProds = selectedProductsRef.current;
+
+        // Debug: log ~once per second (every 60 frames) when products are active
+        debugFrameRef.current++;
+        if (selectedProds.size > 0 && debugFrameRef.current % 60 === 0) {
+          console.log(
+            "[Mirror] render — produtos ativos:",
+            [...selectedProds.entries()],
+            "| landmarks:", lm ? `✓ ${lm.length}pts` : "✗ null",
+          );
+        }
+
+        if (isFullFaceMesh(lm) && selectedProds.size > 0) {
+          // Update lighting factor once per frame (samples forehead brightness)
+          lightFactorRef.current = analyzeFaceLighting(ctx, lm, w, h);
+
+          for (const [product, color] of selectedProds) {
+            switch (product) {
+              case "lipstick":   drawLipstick(ctx, lm, w, h, color);   break;
+              case "blush":      drawBlush(ctx, lm, w, h, color);       break;
+              case "eyeshadow":  drawEyeshadow(ctx, lm, w, h, color);   break;
+              case "eyeliner":   drawEyeliner(ctx, lm, w, h, color);    break;
+              case "foundation": drawFoundation(ctx, lm, w, h, color);  break;
+              case "sunglasses": drawSunglasses(ctx, lm, w, h, color);  break;
+              case "earrings":   drawEarrings(ctx, lm, w, h, color);    break;
+            }
           }
         }
       } catch (err) {
@@ -660,84 +885,105 @@ export default function Mirror() {
   // multiply by w/h to get canvas pixels.
   // ════════════════════════════════════════════════════════════
 
-  // ── LIPSTICK ────────────────────────────────────────────────
-  // Uses evenodd fill rule: outer lip contour (CW) minus inner lip
-  // opening contour (CCW) = only the lip skin is painted.
-  // Contour must form a CLOSED path each sub-path.
+  // ── LIPSTICK ─────────────────────────────────────────────────────
+  // Multi-pass rendering using Canvas 2D blend modes for photorealism:
+  //   Pass 1 — "color" composite: applies hue+sat of the lipstick color
+  //            while preserving the luminosity of the skin underneath.
+  //            This means lip wrinkles, shadows and natural highlights show
+  //            through — identical to how real lipstick looks on skin.
+  //   Pass 2 — "saturation" boost for better vibrancy.
+  //   Pass 3 — feathered outer edge for a soft skin-to-lip transition.
+  //   Pass 4 — specular gloss highlight (white radial gradient).
+  // Intensity and face-lighting factor are read from refs each frame.
   const drawLipstick = (ctx: CanvasRenderingContext2D, lm: LM[], w: number, h: number, color: string) => {
     const { r, g, b } = hexToRgb(color);
+    const iF    = Math.max(0.10, Math.min(1.0, intensityRef.current / 100));
+    const lightF = lightFactorRef.current;
+
+    // Helper: build the full lip clip path (outer shape minus inner opening)
+    const buildLipPath = () => {
+      ctx.beginPath();
+      traceRegion(ctx, lm, UPPER_LIP_OUTER, w, h, true);
+      traceRegion(ctx, lm, LOWER_LIP_OUTER, w, h, false);
+      ctx.closePath();
+      ctx.moveTo(lm[UPPER_LIP_INNER[0]].x * w, lm[UPPER_LIP_INNER[0]].y * h);
+      traceRegion(ctx, lm, UPPER_LIP_INNER, w, h, false);
+      LOWER_LIP_INNER.forEach((idx) => ctx.lineTo(lm[idx].x * w, lm[idx].y * h));
+      ctx.closePath();
+    };
 
     ctx.save();
 
-    // ── Pass 1: base colour fill ──
-    ctx.globalAlpha = 0.72;
+    // ── Pass 1: "color" blend — skin texture and depth preserved ──
+    // The "color" composite operation sets hue+saturation of the overlay
+    // while keeping the underlying luminosity. Result: the natural bumps,
+    // creases and lighting of the lips still show through.
+    ctx.save();
+    buildLipPath();
+    ctx.clip("evenodd");
+    ctx.globalCompositeOperation = "color" as GlobalCompositeOperation;
+    ctx.globalAlpha = Math.min(0.95, 0.80 * iF * lightF);
     ctx.fillStyle   = `rgb(${r},${g},${b})`;
-    ctx.beginPath();
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
 
-    // Outer lip: upper (left→right) then lower (right→left) = clockwise = "filled winding"
-    traceRegion(ctx, lm, UPPER_LIP_OUTER, w, h, true);
-    // Lower outer is already ordered right→left (see LOWER_LIP_OUTER definition)
-    traceRegion(ctx, lm, LOWER_LIP_OUTER, w, h, false);
-    ctx.closePath();
+    // ── Pass 2: saturation boost for pigment vibrancy ──────────────
+    ctx.save();
+    buildLipPath();
+    ctx.clip("evenodd");
+    ctx.globalCompositeOperation = "saturation" as GlobalCompositeOperation;
+    ctx.globalAlpha = 0.35 * iF;
+    ctx.fillStyle   = `rgb(${r},${g},${b})`;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
 
-    // Inner lip opening: upper + lower inner form the "hole"
-    // Must be counter-clockwise relative to the outer path for evenodd to carve it out.
-    // Because UPPER_LIP_INNER goes left→right and LOWER_LIP_INNER goes right→left,
-    // joining them produces a CW sub-path — so we reverse LOWER to make it CCW.
-    ctx.moveTo(lm[UPPER_LIP_INNER[0]].x * w, lm[UPPER_LIP_INNER[0]].y * h);
-    traceRegion(ctx, lm, UPPER_LIP_INNER, w, h, false);
-    [...LOWER_LIP_INNER].reverse().forEach((idx) => ctx.lineTo(lm[idx].x * w, lm[idx].y * h));
-    ctx.closePath();
-
-    ctx.fill("evenodd");
-
-    // ── Pass 2: soft blur edge (skin-blend illusion) ──
-    // We paint again at very low opacity with a larger feathered brush
-    ctx.globalAlpha = 0.14;
-    ctx.filter      = "blur(3px)";
+    // ── Pass 3: feathered outer edge (soft skin → lip transition) ──
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = 0.09 * iF;
+    ctx.filter      = "blur(5px)";
+    ctx.fillStyle   = `rgb(${r},${g},${b})`;
     ctx.beginPath();
     traceRegion(ctx, lm, UPPER_LIP_OUTER, w, h, true);
     traceRegion(ctx, lm, LOWER_LIP_OUTER, w, h, false);
     ctx.closePath();
     ctx.fill();
     ctx.filter = "none";
+    ctx.restore();
 
-    // ── Pass 3: specular gloss highlight ──
-    const lipMid = lm[13]; // centre of upper lip
+    // ── Pass 4: specular gloss highlight ───────────────────────────
+    const lipMid = lm[13]; // Philtrum / upper lip center
     const lipW   = Math.abs(lm[291].x - lm[61].x) * w;
-    ctx.globalAlpha = 0.26;
-    const gloss = ctx.createRadialGradient(
-      lipMid.x * w, lipMid.y * h, 0,
-      lipMid.x * w, lipMid.y * h, lipW * 0.55,
+    const gloss  = ctx.createRadialGradient(
+      lipMid.x * w,                lipMid.y * h - lipW * 0.08, 0,
+      lipMid.x * w,                lipMid.y * h,                lipW * 0.52,
     );
-    gloss.addColorStop(0,   "rgba(255,255,255,0.55)");
-    gloss.addColorStop(0.5, "rgba(255,255,255,0.10)");
+    gloss.addColorStop(0,   "rgba(255,255,255,0.62)");
+    gloss.addColorStop(0.38,"rgba(255,255,255,0.22)");
     gloss.addColorStop(1,   "rgba(255,255,255,0)");
-    ctx.fillStyle = gloss;
-
-    // Clip to outer lip before painting glossy layer
     ctx.save();
-    ctx.beginPath();
-    traceRegion(ctx, lm, UPPER_LIP_OUTER, w, h, true);
-    traceRegion(ctx, lm, LOWER_LIP_OUTER, w, h, false);
-    ctx.closePath();
-    ctx.moveTo(lm[UPPER_LIP_INNER[0]].x * w, lm[UPPER_LIP_INNER[0]].y * h);
-    traceRegion(ctx, lm, UPPER_LIP_INNER, w, h, false);
-    [...LOWER_LIP_INNER].reverse().forEach((idx) => ctx.lineTo(lm[idx].x * w, lm[idx].y * h));
-    ctx.closePath();
+    buildLipPath();
     ctx.clip("evenodd");
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = 0.30 * Math.min(1.2, iF * lightF);
+    ctx.fillStyle   = gloss;
     ctx.fillRect(0, 0, w, h);
     ctx.restore();
 
     ctx.restore();
   };
 
-  // ── BLUSH ────────────────────────────────────────────────────
+  // ── BLUSH ─────────────────────────────────────────────────────────
   // Soft radial gradient clipped inside anatomically correct cheek polygon.
+  // Uses "overlay" blend mode at high intensities so blush looks like it's
+  // sitting IN the skin rather than painted on top.
   const drawBlush = (ctx: CanvasRenderingContext2D, lm: LM[], w: number, h: number, color: string) => {
-    const noseTip  = lm[NOSE_TIP];
-    const faceW    = Math.abs(lm[RIGHT_TRAGUS].x - lm[LEFT_TRAGUS].x) * w;
-    const radius   = faceW * 0.155; // larger than before for better visibility
+    const iF     = Math.max(0.10, Math.min(1.0, intensityRef.current / 100));
+    const lightF = lightFactorRef.current;
+    const noseTip = lm[NOSE_TIP];
+    const faceW   = Math.abs(lm[RIGHT_TRAGUS].x - lm[LEFT_TRAGUS].x) * w;
+    const radius  = faceW * 0.165;
+    const { r, g, b } = hexToRgb(color);
 
     const sides = [
       { cheek: lm[LEFT_CHEEK],  region: LEFT_CHEEK_REGION  },
@@ -745,38 +991,50 @@ export default function Mirror() {
     ];
 
     sides.forEach(({ cheek, region }) => {
-      // Place blush centre slightly toward the nose tip for more natural look
-      const cx = (cheek.x * 0.70 + noseTip.x * 0.30) * w;
-      const cy = (cheek.y * 0.70 + noseTip.y * 0.30) * h;
+      // Blend centre slightly toward nose tip for natural anatomical placement
+      const cx = (cheek.x * 0.65 + noseTip.x * 0.35) * w;
+      const cy = (cheek.y * 0.65 + noseTip.y * 0.35) * h;
 
       ctx.save();
-
-      // Clip to exact cheek region
       ctx.beginPath();
       traceRegion(ctx, lm, region, w, h, true);
       ctx.closePath();
       ctx.clip();
 
-      const { r, g, b } = hexToRgb(color);
-      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-      grad.addColorStop(0,   `rgba(${r},${g},${b},0.52)`);
-      grad.addColorStop(0.45,`rgba(${r},${g},${b},0.28)`);
-      grad.addColorStop(0.75,`rgba(${r},${g},${b},0.10)`);
-      grad.addColorStop(1,   `rgba(${r},${g},${b},0)`);
+      const maxAlpha = Math.min(0.62, 0.58 * iF * lightF);
 
+      // Primary soft ellipse
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+      grad.addColorStop(0,    `rgba(${r},${g},${b},${maxAlpha.toFixed(3)})`);
+      grad.addColorStop(0.45, `rgba(${r},${g},${b},${(maxAlpha * 0.52).toFixed(3)})`);
+      grad.addColorStop(0.78, `rgba(${r},${g},${b},${(maxAlpha * 0.15).toFixed(3)})`);
+      grad.addColorStop(1,    `rgba(${r},${g},${b},0)`);
       ctx.globalAlpha = 1;
       ctx.fillStyle   = grad;
       ctx.beginPath();
-      ctx.ellipse(cx, cy, radius * 1.3, radius, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy, radius * 1.35, radius * 0.90, -0.18, 0, Math.PI * 2);
       ctx.fill();
+
+      // Blurred outer glow for natural fade into skin
+      const gradGlow = ctx.createRadialGradient(cx, cy, radius * 0.5, cx, cy, radius * 1.5);
+      gradGlow.addColorStop(0, `rgba(${r},${g},${b},${(maxAlpha * 0.22).toFixed(3)})`);
+      gradGlow.addColorStop(1, `rgba(${r},${g},${b},0)`);
+      ctx.filter    = "blur(6px)";
+      ctx.fillStyle = gradGlow;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, radius * 1.6, radius * 1.1, -0.18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.filter = "none";
+
       ctx.restore();
     });
   };
 
-  // ── EYESHADOW ────────────────────────────────────────────────
-  // Painted above the eyelid crease — NOT inside the eyeball area.
-  // We extend the upper lid arc upward toward the eyebrow to cover the lid.
+  // ── EYESHADOW ─────────────────────────────────────────────────────
+  // Painted above the eyelid crease. Gradient is denser near the lash
+  // line and fades toward the brow. "multiply" blend keeps skin texture.
   const drawEyeshadow = (ctx: CanvasRenderingContext2D, lm: LM[], w: number, h: number, color: string) => {
+    const iF = Math.max(0.10, Math.min(1.0, intensityRef.current / 100));
     const eyeConfigs = [
       { upper: LEFT_EYE_UPPER,  lower: LEFT_EYE_LOWER,  brow: LEFT_EYEBROW  },
       { upper: RIGHT_EYE_UPPER, lower: RIGHT_EYE_LOWER, brow: RIGHT_EYEBROW },
@@ -798,16 +1056,13 @@ export default function Mirror() {
         };
       });
 
-      // Clip to lid+shadow region
+      // Clip to the shadow band: from the upper-lid arc up to ~50% toward the brow.
+      // Only one closed sub-path — adding a second sub-path without a moveTo after
+      // closePath creates a self-intersecting shape that may clip the wrong region.
       ctx.save();
       ctx.beginPath();
       upperPts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
       shadowRegion.slice().reverse().forEach(p => ctx.lineTo(p.x, p.y));
-      ctx.closePath();
-
-      // Also include the eyeball area for liner effect on lower lash
-      lowerPts.forEach(p => ctx.lineTo(p.x, p.y));
-      upperPts.slice().reverse().forEach(p => ctx.lineTo(p.x, p.y));
       ctx.closePath();
       ctx.clip();
 
@@ -821,32 +1076,33 @@ export default function Mirror() {
       );
 
       const { r, g, b } = hexToRgb(color);
-      // Gradient: dense near the lash line, fades toward brow
+      // Gradient: dense near lash line, fades toward brow
       const grad = ctx.createRadialGradient(avgX, avgY + eyeW * 0.1, 0, avgX, avgY, eyeW * 1.1);
-      grad.addColorStop(0,    `rgba(${r},${g},${b},0.72)`);
-      grad.addColorStop(0.55, `rgba(${r},${g},${b},0.38)`);
+      grad.addColorStop(0,    `rgba(${r},${g},${b},${(0.75 * iF).toFixed(3)})`);
+      grad.addColorStop(0.55, `rgba(${r},${g},${b},${(0.38 * iF).toFixed(3)})`);
       grad.addColorStop(1,    `rgba(${r},${g},${b},0)`);
 
-      ctx.globalAlpha = 0.82;
+      ctx.globalAlpha = Math.min(0.92, 0.82 * iF);
       ctx.fillStyle   = grad;
       ctx.fillRect(avgX - eyeW * 1.5, avgY - eyeW * 1.5, eyeW * 3, eyeW * 3);
       ctx.restore();
     });
   };
 
-  // ── EYELINER ─────────────────────────────────────────────────
+  // ── EYELINER ──────────────────────────────────────────────────────
   // Strokes the upper lash line with a cat-eye wing.
   // Wing direction is computed in SCREEN SPACE so it respects head tilt.
   const drawEyeliner = (ctx: CanvasRenderingContext2D, lm: LM[], w: number, h: number, color: string) => {
-    const lineW  = Math.max(1.5, w * 0.0025);
-    const wingL  = w * 0.013;
+    const iF    = Math.max(0.10, Math.min(1.0, intensityRef.current / 100));
+    const lineW = Math.max(1.5, w * 0.0025);
+    const wingL = w * 0.013;
 
     ctx.save();
     ctx.strokeStyle = color;
     ctx.lineWidth   = lineW;
     ctx.lineCap     = "round";
     ctx.lineJoin    = "round";
-    ctx.globalAlpha = 0.90;
+    ctx.globalAlpha = Math.min(0.95, 0.90 * iF);
 
     const eyes = [
       { arc: LEFT_EYE_UPPER,  outerIdx: LEFT_EYE_OUTER  },
@@ -881,10 +1137,11 @@ export default function Mirror() {
     ctx.restore();
   };
 
-  // ── FOUNDATION ───────────────────────────────────────────────
-  // Very light even-tone overlay across the face oval, excluding
-  // the eye openings and mouth so they remain natural.
+  // ── FOUNDATION ────────────────────────────────────────────────────
+  // Even-tone overlay across the face oval. Uses "color" blend at low
+  // opacity so the natural skin texture and depth always show through.
   const drawFoundation = (ctx: CanvasRenderingContext2D, lm: LM[], w: number, h: number, color: string) => {
+    const iF = Math.max(0.10, Math.min(1.0, intensityRef.current / 100));
     const { r, g, b } = hexToRgb(color);
 
     ctx.save();
@@ -919,12 +1176,12 @@ export default function Mirror() {
     ctx.closePath();
 
     // Fill with low opacity — evenodd punches out the holes
-    ctx.globalAlpha = 0.18;
+    ctx.globalAlpha = Math.min(0.30, 0.18 * iF);
     ctx.fillStyle   = `rgb(${r},${g},${b})`;
     ctx.fill("evenodd");
 
-    // Soft blur pass for skin-blend effect
-    ctx.globalAlpha = 0.09;
+    // Soft blur pass for natural skin-like blend
+    ctx.globalAlpha = Math.min(0.14, 0.09 * iF);
     ctx.filter      = "blur(8px)";
     ctx.fill("evenodd");
     ctx.filter      = "none";
@@ -932,11 +1189,11 @@ export default function Mirror() {
     ctx.restore();
   };
 
-  // ── SUNGLASSES ───────────────────────────────────────────────
+  // ── SUNGLASSES ───────────────────────────────────────────────────
   // Lenses sized and positioned from eye-landmark geometry.
   // Head rotation via roll angle; arms follow tragus landmarks.
-  // All drawing in rotated local coordinates then un-rotated.
   const drawSunglasses = (ctx: CanvasRenderingContext2D, lm: LM[], w: number, h: number, color: string) => {
+    const iF = Math.max(0.10, Math.min(1.0, intensityRef.current / 100));
     const lCenter = eyeCenter(lm, LEFT_EYE_INNER,  LEFT_EYE_OUTER);
     const rCenter = eyeCenter(lm, RIGHT_EYE_INNER, RIGHT_EYE_OUTER);
 
@@ -955,8 +1212,8 @@ export default function Mirror() {
 
     // Tinted lens colour from frame colour
     const { r, g, b } = hexToRgb(color);
-    const lensAlpha   = color === "#18181b" ? 0.68 : 0.45;
-    const lensColor   = `rgba(${r},${g},${b},${lensAlpha})`;
+    const lensAlpha   = (color === "#1A1A1A" || color === "#152850") ? 0.72 * iF : 0.50 * iF;
+    const lensColor   = `rgba(${r},${g},${b},${Math.min(0.9, lensAlpha).toFixed(3)})`;
 
     ctx.save();
     ctx.translate(midX, midY);
@@ -965,14 +1222,22 @@ export default function Mirror() {
     ctx.strokeStyle = color;
     ctx.lineWidth   = frameStroke;
 
-    // ── Left lens ──
+    // ── Lens placement: coordinate system is translated to face centre & rotated ──
+    // Person's LEFT eye is at HIGH canvas-X → positive local-X after translate.
+    // Person's RIGHT eye is at LOW canvas-X  → negative local-X after translate.
+    // CSS scaleX(-1) flips the display so everything appears correct to the viewer.
+    //
+    // Left lens  → positive-X side (canvas RIGHT → viewer LEFT after flip)
+    // Right lens → negative-X side (canvas LEFT  → viewer RIGHT after flip)
+
+    // ── Left lens (person's left eye, positive side) ──
     ctx.fillStyle = lensColor;
-    drawRoundedRect(ctx, -bridgeW / 2 - lensW, -lensH / 2, lensW, lensH, lensH * 0.30);
+    drawRoundedRect(ctx, bridgeW / 2, -lensH / 2, lensW, lensH, lensH * 0.30);
     ctx.fill();
     ctx.stroke();
 
-    // ── Right lens ──
-    drawRoundedRect(ctx, bridgeW / 2, -lensH / 2, lensW, lensH, lensH * 0.30);
+    // ── Right lens (person's right eye, negative side) ──
+    drawRoundedRect(ctx, -bridgeW / 2 - lensW, -lensH / 2, lensW, lensH, lensH * 0.30);
     ctx.fill();
     ctx.stroke();
 
@@ -998,32 +1263,37 @@ export default function Mirror() {
     const rTragusLocal  = toLocal(rightTragus.x, rightTragus.y);
 
     ctx.lineWidth = frameStroke * 0.68;
+    // Left arm: outer edge of left lens → LEFT_TRAGUS (both at positive/high canvas-X)
     ctx.beginPath();
-    ctx.moveTo(-bridgeW / 2 - lensW,  lensH * 0.08);
+    ctx.moveTo(bridgeW / 2 + lensW,  lensH * 0.08);
     ctx.lineTo(lTragusLocal.x, lTragusLocal.y);
     ctx.stroke();
 
+    // Right arm: outer edge of right lens → RIGHT_TRAGUS (both at negative/low canvas-X)
     ctx.beginPath();
-    ctx.moveTo(bridgeW / 2 + lensW,   lensH * 0.08);
+    ctx.moveTo(-bridgeW / 2 - lensW,  lensH * 0.08);
     ctx.lineTo(rTragusLocal.x, rTragusLocal.y);
     ctx.stroke();
 
-    // ── Glare on lenses ──
+    // ── Glare on lenses (upper-inner corner of each lens) ──
     ctx.globalAlpha = 0.22;
     ctx.fillStyle   = "rgba(255,255,255,0.8)";
+    // Left lens glare (upper-inner: inner edge is at bridgeW/2, upper is at -lensH/2)
     ctx.beginPath();
-    ctx.ellipse(-bridgeW / 2 - lensW * 0.68, -lensH * 0.20, lensW * 0.14, lensH * 0.08, -0.4, 0, Math.PI * 2);
+    ctx.ellipse(bridgeW / 2 + lensW * 0.22, -lensH * 0.20, lensW * 0.14, lensH * 0.08, -0.4, 0, Math.PI * 2);
     ctx.fill();
+    // Right lens glare
     ctx.beginPath();
-    ctx.ellipse(bridgeW / 2 + lensW * 0.32, -lensH * 0.20, lensW * 0.14, lensH * 0.08, -0.4, 0, Math.PI * 2);
+    ctx.ellipse(-bridgeW / 2 - lensW * 0.22, -lensH * 0.20, lensW * 0.14, lensH * 0.08, -0.4, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
   };
 
-  // ── EARRINGS ────────────────────────────────────────────────
+  // ── EARRINGS ──────────────────────────────────────────────────────
   // Drop earrings anchored to ear-lobe landmarks, rotated with head tilt.
   const drawEarrings = (ctx: CanvasRenderingContext2D, lm: LM[], w: number, h: number, color: string) => {
+    const iF         = Math.max(0.10, Math.min(1.0, intensityRef.current / 100));
     const faceW      = Math.abs(lm[RIGHT_TRAGUS].x - lm[LEFT_TRAGUS].x) * w;
     const stud       = faceW * 0.024;
     const dropLen    = faceW * 0.070;
@@ -1039,7 +1309,7 @@ export default function Mirror() {
       ctx.save();
       ctx.translate(lobe.x * w, lobe.y * h);
       ctx.rotate(headAngle);
-      ctx.globalAlpha = 0.92;
+      ctx.globalAlpha = Math.min(0.95, 0.92 * iF);
       ctx.fillStyle   = `rgb(${r},${g},${b})`;
 
       // Stud / post
@@ -1093,7 +1363,12 @@ export default function Mirror() {
 
   useEffect(() => () => stopCamera(), [stopCamera]);
 
-  const filteredProducts = products.filter((p) => p.category === activeTab);
+  const filteredProducts   = DEMO_PRODUCTS.filter((p) => p.category === activeTab);
+  const filteredDbProducts = dbProducts.filter((p) => {
+    if (activeTab === "beauty")      return p.category !== "eyewear" && p.makeup_type !== null;
+    if (activeTab === "accessories") return p.category === "eyewear";
+    return false;
+  });
 
   const modeLabel: Record<DetectionMode, string> = {
     loading:     "INICIALIZANDO...",
@@ -1187,7 +1462,7 @@ export default function Mirror() {
                 {(["beauty", "accessories"] as ProductCategory[]).map((tab) => (
                   <button
                     key={tab}
-                    onClick={() => { setActiveTab(tab); setSelectedProduct(null); }}
+                    onClick={() => { setActiveTab(tab); setSelectedProducts(new Map()); }}
                     className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
                       activeTab === tab
                         ? "bg-card text-foreground shadow-sm"
@@ -1200,15 +1475,98 @@ export default function Mirror() {
               </div>
 
               <div className="rounded-2xl border border-border bg-card p-5">
+                {/* ── Intensity slider ─────────────────────────────── */}
+                {selectedProducts.size > 0 && (
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs text-muted-foreground">Intensidade</span>
+                      <span className="text-xs font-mono text-foreground">{intensity}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={20}
+                      max={100}
+                      value={intensity}
+                      onChange={(e) => setIntensity(Number(e.target.value))}
+                      className="w-full accent-primary cursor-pointer"
+                    />
+                  </div>
+                )}
+
                 <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                  {/* ── Seus Produtos (from DB) ──────────────────────── */}
+                  {filteredDbProducts.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-xs font-mono text-primary mb-2 flex items-center gap-1.5">
+                        <Sparkles className="w-3 h-3" /> SEUS PRODUTOS
+                      </p>
+                      {filteredDbProducts.map((p) => {
+                        const drawId   = p.makeup_type ?? "lipstick";
+                        const colorHex = p.color_hex   ?? "#C0152F";
+                        const isActive = selectedProducts.get(drawId) === colorHex;
+                        return (
+                          <div key={p.id} className="mb-1">
+                            <button
+                              onClick={() =>
+                                setSelectedProducts(prev => {
+                                  const next = new Map(prev);
+                                  if (isActive) next.delete(drawId);
+                                  else          next.set(drawId, colorHex);
+                                  return next;
+                                })
+                              }
+                              className={`w-full text-left px-3 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${
+                                isActive
+                                  ? "bg-primary/10 text-primary"
+                                  : "hover:bg-secondary text-muted-foreground"
+                              }`}
+                            >
+                              {p.image_url ? (
+                                <img
+                                  src={p.image_url}
+                                  alt={p.name}
+                                  className="w-6 h-6 rounded-md object-cover flex-shrink-0"
+                                />
+                              ) : (
+                                <div
+                                  className="w-6 h-6 rounded-full flex-shrink-0"
+                                  style={{ backgroundColor: colorHex }}
+                                />
+                              )}
+                              <span className="truncate flex-1">{p.name}</span>
+                              <div
+                                className="w-4 h-4 rounded-full border border-white/30 flex-shrink-0"
+                                style={{ backgroundColor: colorHex }}
+                              />
+                            </button>
+                          </div>
+                        );
+                      })}
+                      <div className="my-3 border-t border-border/50" />
+                    </div>
+                  )}
+                  {filteredDbProducts.length > 0 && (
+                    <p className="text-xs font-mono text-muted-foreground/60 mb-2">DEMO</p>
+                  )}
+
                   {filteredProducts.map((product) => (
                     <div key={product.id}>
                       <button
-                        onClick={() =>
-                          setSelectedProduct(selectedProduct === product.id ? null : product.id)
-                        }
+                        onClick={() => {
+                          console.log("[Mirror] clicou no produto:", product.id);
+                          setSelectedProducts(prev => {
+                            const next = new Map(prev);
+                            if (next.has(product.id)) {
+                              next.delete(product.id);
+                            } else {
+                              next.set(product.id, product.colors[0].color);
+                            }
+                            console.log("[Mirror] selectedProducts após clique:", [...next.entries()]);
+                            return next;
+                          });
+                        }}
                         className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${
-                          selectedProduct === product.id
+                          selectedProducts.has(product.id)
                             ? "bg-primary/10 text-primary"
                             : "hover:bg-secondary text-muted-foreground"
                         }`}
@@ -1217,14 +1575,18 @@ export default function Mirror() {
                         {product.name}
                         <span className="ml-auto text-xs opacity-50">{product.colors.length} cores</span>
                       </button>
-                      {selectedProduct === product.id && (
+                      {selectedProducts.has(product.id) && (
                         <div className="flex flex-wrap gap-2 mt-2 ml-3 pb-1">
                           {product.colors.map((c) => (
                             <button
                               key={c.name}
-                              onClick={() => setSelectedColor(c.color)}
+                              onClick={() => setSelectedProducts(prev => {
+                                const next = new Map(prev);
+                                next.set(product.id, c.color);
+                                return next;
+                              })}
                               className={`w-8 h-8 rounded-full border-2 transition-all ${
-                                selectedColor === c.color
+                                selectedProducts.get(product.id) === c.color
                                   ? "border-foreground scale-110"
                                   : "border-transparent"
                               }`}

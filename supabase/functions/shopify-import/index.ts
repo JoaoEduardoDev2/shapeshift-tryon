@@ -68,14 +68,30 @@ Deno.serve(async (req) => {
       shopDomain = `${shopDomain}.myshopify.com`;
     }
 
-    // Fetch products from Shopify Admin API
+    // ── SSRF guard: reject non-public domains ──────────────────────────────
+    if (!isSafeDomain(shopDomain)) {
+      return new Response(JSON.stringify({ error: "Domínio inválido ou não permitido." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── Fetch products from Shopify Admin API (15 s timeout) ───────────────
     const shopifyUrl = `https://${shopDomain}/admin/api/2024-01/products.json?limit=250`;
-    const shopifyRes = await fetch(shopifyUrl, {
-      headers: {
-        "X-Shopify-Access-Token": api_key,
-        "Content-Type": "application/json",
-      },
-    });
+    console.log("[shopify-import] GET", shopifyUrl);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 15000);
+    let shopifyRes: Response;
+    try {
+      shopifyRes = await fetch(shopifyUrl, {
+        signal: ctrl.signal,
+        headers: {
+          "X-Shopify-Access-Token": api_key,
+          "Content-Type": "application/json",
+        },
+      });
+    } finally {
+      clearTimeout(timer);
+    }
 
     if (!shopifyRes.ok) {
       const errText = await shopifyRes.text();
@@ -97,9 +113,13 @@ Deno.serve(async (req) => {
       description: p.body_html?.replace(/<[^>]*>/g, "").slice(0, 500) || null,
       category: mapCategory(p.product_type),
       image_url: p.images?.[0]?.src || null,
+      imported_images: (p.images ?? []).map((i) => i.src),
       price: p.variants?.[0]?.price ? parseFloat(p.variants[0].price) : null,
       sku: p.variants?.[0]?.sku || null,
+      sizes: [...new Set((p.variants ?? []).map((v: any) => v.option1).filter(Boolean))],
       is_active: true,
+      original_url: `https://${shopDomain}/products/${(p as any).handle ?? ""}`,
+      import_type: "integration",
     }));
 
     // Upsert products (by SKU to avoid duplicates)
@@ -166,4 +186,15 @@ function mapCategory(shopifyType: string): string {
   if (t.includes("jacket") || t.includes("coat") || t.includes("jaqueta")) return "outerwear";
   if (t.includes("skirt") || t.includes("saia")) return "bottoms";
   return "tops";
+}
+
+/** Reject localhost and RFC-1918 addresses to prevent SSRF. */
+function isSafeDomain(host: string): boolean {
+  const h = host.toLowerCase();
+  if (h === "localhost" || h === "::1") return false;
+  if (/^127\./.test(h) || /^10\./.test(h)) return false;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(h)) return false;
+  if (/^192\.168\./.test(h)) return false;
+  if (/^169\.254\./.test(h)) return false;
+  return true;
 }

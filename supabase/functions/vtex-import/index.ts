@@ -29,21 +29,31 @@ Deno.serve(async (req) => {
 
     const domain = account_name.includes(".") ? account_name : `${account_name}.vtexcommercestable.com.br`;
     const apiUrl = `https://${domain}/api/catalog_system/pub/products/search?_from=0&_to=249`;
-
-    const vtexRes = await fetch(apiUrl, {
-      headers: {
-        "X-VTEX-API-AppKey": app_key,
-        "X-VTEX-API-AppToken": app_token,
-        "Content-Type": "application/json",
-      },
-    });
+    console.log("[vtex-import] GET", apiUrl);
+    const vtexCtrl = new AbortController();
+    const vtexTimer = setTimeout(() => vtexCtrl.abort(), 15000);
+    let vtexRes: Response;
+    try {
+      vtexRes = await fetch(apiUrl, {
+        signal: vtexCtrl.signal,
+        headers: {
+          "X-VTEX-API-AppKey": app_key,
+          "X-VTEX-API-AppToken": app_token,
+          "Content-Type": "application/json",
+        },
+      });
+    } finally {
+      clearTimeout(vtexTimer);
+    }
 
     if (!vtexRes.ok) {
       const errText = await vtexRes.text();
-      return new Response(JSON.stringify({ error: `VTEX API error (${vtexRes.status})`, details: errText }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      console.error("[vtex-import] API error", vtexRes.status, errText.slice(0, 200));
+      return new Response(JSON.stringify({ error: `VTEX API error (${vtexRes.status}): verifique o account name, App Key e App Token`, details: errText.slice(0, 500) }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const products = await vtexRes.json();
+    console.log("[vtex-import] produtos encontrados:", products.length);
     const mapped = products.map((p: any) => ({
       user_id: userId,
       name: p.productName || p.nameComplete || "Sem nome",
@@ -53,8 +63,8 @@ Deno.serve(async (req) => {
       price: p.items?.[0]?.sellers?.[0]?.commertialOffer?.Price || null,
       sku: p.items?.[0]?.referenceId?.[0]?.Value || p.productReference || null,
       is_active: p.isActive ?? true,
-    }));
-
+      original_url: p.link ?? null,
+      import_type: "integration",
     let imported = 0, skipped = 0;
     for (const product of mapped) {
       if (product.sku) {

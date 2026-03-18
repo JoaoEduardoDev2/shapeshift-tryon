@@ -40,14 +40,17 @@ export function ImportProductDialog({ userId, onSaved, canAddProduct = true }: I
 
   const handleImport = async () => {
     if (!url.trim()) return;
+    console.log("[ImportProduct] iniciando importação →", url.trim());
     setImporting(true);
     try {
       const { data, error } = await supabase.functions.invoke("scrape-product", {
         body: { url: url.trim() },
       });
+      console.log("[ImportProduct] resposta da função:", { data, error });
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Falha ao importar");
 
+      console.log("[ImportProduct] produto extraído:", data.product);
       setProduct(data.product);
       setCustomImage(data.product.images?.[0] || "");
       setStep("preview");
@@ -92,6 +95,7 @@ export function ImportProductDialog({ userId, onSaved, canAddProduct = true }: I
     setSaving(true);
     try {
       const mappedCategory = mapCategory(product.category);
+      console.log("[ImportProduct] salvando no banco →", { name: product.name, category: mappedCategory, image: customImage || product.images?.[0] });
       const { error } = await supabase.from("products").insert({
         user_id: userId,
         name: product.name,

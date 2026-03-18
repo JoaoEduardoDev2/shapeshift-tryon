@@ -45,21 +45,32 @@ Deno.serve(async (req) => {
     // Normalize Tray API URL
     const baseUrl = api_url.replace(/\/+$/, "");
 
-    // Fetch products from Tray API
-    const trayRes = await fetch(`${baseUrl}/products?access_token=${access_token}&limit=200`, {
-      headers: { "Content-Type": "application/json" },
-    });
+    // Fetch products from Tray API (15 s timeout)
+    console.log("[tray-import] GET", `${baseUrl}/products`);
+    const trayCtrl = new AbortController();
+    const trayTimer = setTimeout(() => trayCtrl.abort(), 15000);
+    let trayRes: Response;
+    try {
+      trayRes = await fetch(`${baseUrl}/products?access_token=${access_token}&limit=200`, {
+        signal: trayCtrl.signal,
+        headers: { "Content-Type": "application/json" },
+      });
+    } finally {
+      clearTimeout(trayTimer);
+    }
 
     if (!trayRes.ok) {
       const errText = await trayRes.text();
+      console.error("[tray-import] API error", trayRes.status, errText.slice(0, 200));
       return new Response(
-        JSON.stringify({ error: `Tray API error (${trayRes.status})`, details: errText }),
+        JSON.stringify({ error: `Tray API error (${trayRes.status}): verifique a URL da API e o Access Token`, details: errText.slice(0, 500) }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const trayData = await trayRes.json();
     const products = trayData.Products || [];
+    console.log("[tray-import] produtos encontrados:", products.length);
 
     const mapped = products.map((wrapper: any) => {
       const p = wrapper.Product || wrapper;
@@ -72,6 +83,8 @@ Deno.serve(async (req) => {
         price: p.price ? parseFloat(p.price) : null,
         sku: p.reference || p.sku || null,
         is_active: p.available === "1" || p.available === 1,
+        original_url: p.slug ? `${baseUrl.replace("/web_api", "")}/${p.slug}` : null,
+        import_type: "integration",
       };
     });
 

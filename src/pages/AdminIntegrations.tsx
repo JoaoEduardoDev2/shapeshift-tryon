@@ -148,6 +148,7 @@ export default function AdminIntegrations() {
     }
 
     setImporting(true);
+    console.log("[AdminIntegrations] iniciando importação", activePlatform, Object.keys(formValues));
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
@@ -162,6 +163,7 @@ export default function AdminIntegrations() {
       );
 
       const result = await res.json();
+      console.log("[AdminIntegrations] resposta da função", activePlatform, res.status, result);
       if (!res.ok) {
         toast({ title: "Erro ao importar", description: result.error || "Verifique as credenciais", variant: "destructive" });
         return;
