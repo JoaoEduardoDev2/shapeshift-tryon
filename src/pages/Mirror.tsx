@@ -371,6 +371,21 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
 }
 
 // ────────────────────────────────────────────────────────────
+// Module-level image cache — loaded once per session, reused
+// across React re-renders without allocating new Image objects.
+// ────────────────────────────────────────────────────────────
+const _imgCache = new Map<string, HTMLImageElement>();
+
+function getOrLoadImage(url: string): HTMLImageElement {
+  if (_imgCache.has(url)) return _imgCache.get(url)!;
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.src = url;
+  _imgCache.set(url, img);
+  return img;
+}
+
+// ────────────────────────────────────────────────────────────
 // extractDominantColor
 // Samples the inner 40% of a product image and returns the most
 // saturated representative color as "#rrggbb".
@@ -502,9 +517,11 @@ export default function Mirror() {
   selectedProductsRef.current = selectedProducts;
   mirroredRef.current         = mirrored;
   // Refs kept in sync with state so the render-loop closure sees current values
-  const intensityRef    = useRef(70);
-  const lightFactorRef  = useRef(1.0);
-  intensityRef.current  = intensity;
+  const intensityRef          = useRef(70);
+  const lightFactorRef        = useRef(1.0);
+  /** Maps drawId (e.g. "sunglasses", "earrings") → image_url of the currently selected DB product */
+  const drawIdToImageUrlRef   = useRef<Map<string, string>>(new Map());
+  intensityRef.current        = intensity;
 
   // Load product from query param
   useEffect(() => {
@@ -558,6 +575,12 @@ export default function Mirror() {
     };
     loadProducts();
   }, []);
+
+  // Eagerly preload product images the moment the catalog is known so they
+  // are already decoded and cached when the render-loop first needs them.
+  useEffect(() => {
+    dbProducts.forEach(p => { if (p.image_url) getOrLoadImage(p.image_url); });
+  }, [dbProducts]);
 
   const startCamera = useCallback(async () => {
     try {
@@ -866,8 +889,20 @@ export default function Mirror() {
               case "eyeshadow":  drawEyeshadow(ctx, lm, w, h, color);   break;
               case "eyeliner":   drawEyeliner(ctx, lm, w, h, color);    break;
               case "foundation": drawFoundation(ctx, lm, w, h, color);  break;
-              case "sunglasses": drawSunglasses(ctx, lm, w, h, color);  break;
-              case "earrings":   drawEarrings(ctx, lm, w, h, color);    break;
+              case "sunglasses": {
+                const _su = drawIdToImageUrlRef.current.get("sunglasses");
+                const _si = _su ? _imgCache.get(_su) : undefined;
+                drawSunglasses(ctx, lm, w, h, color,
+                  _si?.complete && _si.naturalWidth > 0 ? _si : undefined);
+                break;
+              }
+              case "earrings": {
+                const _eu = drawIdToImageUrlRef.current.get("earrings");
+                const _ei = _eu ? _imgCache.get(_eu) : undefined;
+                drawEarrings(ctx, lm, w, h, color,
+                  _ei?.complete && _ei.naturalWidth > 0 ? _ei : undefined);
+                break;
+              }
             }
           }
         }
@@ -1192,7 +1227,7 @@ export default function Mirror() {
   // ── SUNGLASSES ───────────────────────────────────────────────────
   // Lenses sized and positioned from eye-landmark geometry.
   // Head rotation via roll angle; arms follow tragus landmarks.
-  const drawSunglasses = (ctx: CanvasRenderingContext2D, lm: LM[], w: number, h: number, color: string) => {
+  const drawSunglasses = (ctx: CanvasRenderingContext2D, lm: LM[], w: number, h: number, color: string, img?: HTMLImageElement) => {
     const iF = Math.max(0.10, Math.min(1.0, intensityRef.current / 100));
     const lCenter = eyeCenter(lm, LEFT_EYE_INNER,  LEFT_EYE_OUTER);
     const rCenter = eyeCenter(lm, RIGHT_EYE_INNER, RIGHT_EYE_OUTER);
@@ -1218,6 +1253,20 @@ export default function Mirror() {
     ctx.save();
     ctx.translate(midX, midY);
     ctx.rotate(angle);
+
+    // ── Real product image — used when user selected a DB product with an image ──
+    if (img) {
+      const totalW  = lensW * 2 + bridgeW * 1.15;
+      const aspect  = img.naturalHeight && img.naturalWidth ? img.naturalHeight / img.naturalWidth : 0.40;
+      const totalH  = totalW * aspect;
+      ctx.shadowColor   = "rgba(0,0,0,0.32)";
+      ctx.shadowBlur    = Math.max(6, frameStroke * 3);
+      ctx.shadowOffsetY = frameStroke * 1.2;
+      ctx.globalAlpha   = Math.min(0.97, iF);
+      ctx.drawImage(img, -totalW / 2, -totalH / 2, totalW, totalH);
+      ctx.restore();
+      return;
+    }
 
     ctx.strokeStyle = color;
     ctx.lineWidth   = frameStroke;
@@ -1292,7 +1341,7 @@ export default function Mirror() {
 
   // ── EARRINGS ──────────────────────────────────────────────────────
   // Drop earrings anchored to ear-lobe landmarks, rotated with head tilt.
-  const drawEarrings = (ctx: CanvasRenderingContext2D, lm: LM[], w: number, h: number, color: string) => {
+  const drawEarrings = (ctx: CanvasRenderingContext2D, lm: LM[], w: number, h: number, color: string, img?: HTMLImageElement) => {
     const iF         = Math.max(0.10, Math.min(1.0, intensityRef.current / 100));
     const faceW      = Math.abs(lm[RIGHT_TRAGUS].x - lm[LEFT_TRAGUS].x) * w;
     const stud       = faceW * 0.024;
@@ -1310,6 +1359,20 @@ export default function Mirror() {
       ctx.translate(lobe.x * w, lobe.y * h);
       ctx.rotate(headAngle);
       ctx.globalAlpha = Math.min(0.95, 0.92 * iF);
+
+      // ── Real earring image ────────────────────────────────────────────
+      if (img) {
+        const earW   = faceW * 0.09;
+        const aspect = img.naturalHeight && img.naturalWidth ? img.naturalHeight / img.naturalWidth : 1.4;
+        const earH   = earW * aspect;
+        ctx.shadowColor   = "rgba(0,0,0,0.28)";
+        ctx.shadowBlur    = 5;
+        ctx.shadowOffsetX = 2;
+        ctx.drawImage(img, -earW / 2, 0, earW, earH);
+        ctx.restore();
+        return;
+      }
+
       ctx.fillStyle   = `rgb(${r},${g},${b})`;
 
       // Stud / post
@@ -1507,14 +1570,21 @@ export default function Mirror() {
                         return (
                           <div key={p.id} className="mb-1">
                             <button
-                              onClick={() =>
+                              onClick={() => {
                                 setSelectedProducts(prev => {
                                   const next = new Map(prev);
                                   if (isActive) next.delete(drawId);
                                   else          next.set(drawId, colorHex);
                                   return next;
-                                })
-                              }
+                                });
+                                // Keep image-URL ref in sync — the render loop reads this each frame
+                                if (isActive) {
+                                  drawIdToImageUrlRef.current.delete(drawId);
+                                } else if (p.image_url) {
+                                  getOrLoadImage(p.image_url); // warm up cache
+                                  drawIdToImageUrlRef.current.set(drawId, p.image_url);
+                                }
+                              }}
                               className={`w-full text-left px-3 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${
                                 isActive
                                   ? "bg-primary/10 text-primary"
