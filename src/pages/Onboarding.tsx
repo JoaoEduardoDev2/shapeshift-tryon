@@ -77,13 +77,33 @@ export default function Onboarding() {
         password: form.password,
         options: {
           data: { full_name: form.name, plan: selectedPlan || "starter" },
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: `${window.location.origin}/auth`,
         },
       });
-      if (error) throw error;
+
+      if (error) {
+        // "User already registered" — guide them to login
+        if (error.message.toLowerCase().includes("already") ||
+            error.message.toLowerCase().includes("registered") ||
+            error.message.toLowerCase().includes("exists")) {
+          toast({
+            title: "Email já cadastrado",
+            description: "Este email já possui uma conta. Faça login ou recupere sua senha.",
+            variant: "destructive",
+          });
+          navigate("/auth");
+          return;
+        }
+        throw error;
+      }
 
       const userId = data.user?.id;
-      if (userId) {
+
+      // Update profile fields using the session that signUp may return.
+      // When Supabase has email confirmation DISABLED the session comes back
+      // immediately. If confirmation IS required the session is null and we
+      // skip the update – the trigger already created the row with full_name.
+      if (data.session && userId) {
         await supabase.from("profiles").update({
           full_name: form.name,
           phone: form.phone,
@@ -95,15 +115,20 @@ export default function Onboarding() {
           segment: accountType === "pj" ? form.segment : null,
           profession: accountType === "pf" ? form.profession : null,
         }).eq("id", userId);
+
+        toast({ title: "Conta criada! 🎉", description: "Bem-vindo! Seu trial de 7 dias começou." });
+        navigate("/admin");
+        return;
       }
 
+      // Email confirmation required — session is null
       toast({
-        title: "Conta criada com sucesso! 🎉",
-        description: "Verifique seu email para confirmar o cadastro. Seu trial de 7 dias já começou!",
+        title: "Confirme seu email ✉️",
+        description: "Enviamos um link de confirmação. Após confirmar, volte aqui para fazer login.",
       });
       navigate("/auth");
     } catch (err: any) {
-      toast({ title: "Erro", description: err.message, variant: "destructive" });
+      toast({ title: "Erro ao criar conta", description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }

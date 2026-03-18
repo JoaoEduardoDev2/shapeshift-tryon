@@ -13,18 +13,51 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
+  const [resendSent, setResendSent] = useState(false);
+  const [showResend, setShowResend] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const translateError = (msg: string): string => {
+    if (msg.includes("Invalid login credentials"))       return "Email ou senha incorretos.";
+    if (msg.includes("Email not confirmed"))             return "Email não confirmado. Confirme seu cadastro antes de entrar.";
+    if (msg.includes("Too many requests"))               return "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
+    if (msg.includes("User not found"))                  return "Não encontramos uma conta com este email.";
+    if (msg.includes("Password should be at least"))    return "A senha deve ter pelo menos 6 caracteres.";
+    return msg;
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setShowResend(false);
 
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       toast({ title: "Bem-vindo de volta!" });
       navigate("/admin");
+    } catch (err: any) {
+      const translated = translateError(err.message);
+      const isUnconfirmed = err.message.includes("Email not confirmed");
+      if (isUnconfirmed) setShowResend(true);
+      toast({ title: "Erro ao entrar", description: translated, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!email) {
+      toast({ title: "Informe seu email", description: "Digite seu email antes de reenviar.", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({ type: "signup", email });
+      if (error) throw error;
+      setResendSent(true);
+      toast({ title: "Email reenviado! ✉️", description: "Verifique sua caixa de entrada." });
     } catch (err: any) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
     } finally {
@@ -100,6 +133,20 @@ export default function Auth() {
                   {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                   Entrar
                 </Button>
+                {showResend && (
+                  <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 text-sm text-amber-700 dark:text-amber-400">
+                    <p className="font-medium mb-1">Email não confirmado</p>
+                    <p className="text-xs mb-2">Verifique sua caixa de entrada ou spam. Se não recebeu:</p>
+                    <button
+                      type="button"
+                      onClick={handleResendConfirmation}
+                      disabled={loading || resendSent}
+                      className="text-xs font-semibold underline disabled:opacity-50"
+                    >
+                      {resendSent ? "Email reenviado! Verifique sua caixa." : "Reenviar email de confirmação"}
+                    </button>
+                  </div>
+                )}
               </form>
             )}
 

@@ -137,25 +137,44 @@ export function useSubscriptionGuard() {
             ? user.user_metadata.plan
             : "starter";
 
-        const { data: created } = await supabase
+        // Use upsert to avoid unique-constraint failure if the trigger already
+        // created the row between the select and this insert.
+        const { data: upserted, error: upsertErr } = await supabase
           .from("subscriptions")
-          .insert({
-            user_id: user.id,
-            plan: selectedPlan,
-            subscription_status: "trial",
-          })
+          .upsert(
+            { user_id: user.id, plan: selectedPlan, subscription_status: "trial" },
+            { onConflict: "user_id", ignoreDuplicates: false },
+          )
           .select("subscription_status, trial_end")
-          .order("updated_at", { ascending: false })
-          .limit(1)
           .maybeSingle();
 
-        if (!created) {
-          setStatus(null);
+        if (upsertErr) {
+          console.error("[SubscriptionGuard] upsert error:", upsertErr);
+          // Retry a plain select – the row may already exist
+          const { data: retry } = await supabase
+            .from("subscriptions")
+            .select("subscription_status, trial_end")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          if (retry) {
+            const expired = new Date(retry.trial_end) < new Date();
+            setStatus(expired ? "expired" : retry.subscription_status);
+          } else {
+            // Can’t determine status – default to trial so user isn’t blocked
+            setStatus("trial");
+          }
           setLoading(false);
           return;
         }
 
-        const expired = new Date(created.trial_end) < new Date();
+        if (!upserted) {
+          // Shouldn’t happen, but treat as active trial rather than blocking
+          setStatus("trial");
+          setLoading(false);
+          return;
+        }
+
+        const expired = new Date(upserted.trial_end) < new Date();
         setStatus(expired ? "expired" : "trial");
         setLoading(false);
         return;
